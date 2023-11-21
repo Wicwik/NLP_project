@@ -1,0 +1,16 @@
+[[configs]]
+datasets = ["mrpc"]
+dataset_config_name = ["en"]
+device = "cuda"
+learning_rate = 3e-2
+model_name_or_path = "t5-base"
+tokenizer_name_or_path = "t5-base"
+max_length = 64
+num_epochs = 20
+batch_size = 8
+peft_type = "prompt_tunning"
+task_type = "seq_2_seq_lm"
+num_virtual_tokens = 100
+n_runs = 10
+wandb_project = "prompt_tunning"
+max_source_length = 256
