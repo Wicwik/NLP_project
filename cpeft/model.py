@@ -11,12 +11,23 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
     def __init__(self, model: PreTrainedModel, peft_config: PeftConfig, adapter_name: str = "peft"):
         super().__init__()
         self.base_model = model
+        self.device = self.base_model.device
 
         self._peft_config = {adapter_name: peft_config}
         self._is_prompt_learning = peft_config.is_prompt_learning
 
         self.config = getattr(self.base_model, "config", {"model_type": "custom"})
         self.add_adapter(adapter_name, peft_config)
+
+        if hasattr(self.base_model, "config") and hasattr(self.base_model.config, "pretraining_tp"):
+            self.base_model.config.pretraining_tp = 1
+
+    def save_pretrained(self):
+        pass
+
+    @classmethod
+    def load_pretrained(self):
+        pass
 
     @property
     def peft_config(self) -> Dict[str, str]:
@@ -77,6 +88,15 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
         prompt_encoder = prompt_encoder.to(self.device)
         self.prompt_encoder.update(torch.nn.ModuleDict({adapter_name: prompt_encoder}))
         self.prompt_tokens[adapter_name] = torch.arange(config.num_virtual_tokens * config.num_transformer_submodules).long()
+
+    def __getattr__(self, name: str):
+        try:
+            return super().__getattr__(name)  # defer to nn.Module's logic
+        except AttributeError:
+            return getattr(self.base_model, name)
+
+    def forward(self, *args: Any, **kwargs: Any):
+        return self.get_base_model()(*args, **kwargs)
 
 class PeftModelForSeq2SeqLM(PeftModel):
     def __init__(self, model: PreTrainedModel, peft_config: PeftConfig, adapter_name: str = "seq2seq_peft"):

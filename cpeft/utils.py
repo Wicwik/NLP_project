@@ -1,3 +1,5 @@
+import torch
+
 from .config import PeftConfig
 
 def _prepare_prompt_learning_config(peft_config: PeftConfig, model_config):
@@ -9,3 +11,11 @@ def _prepare_prompt_learning_config(peft_config: PeftConfig, model_config):
         setattr(peft_config, "encoder_hidden_size", peft_config.token_dim)
 
     return peft_config
+
+
+def infer_device():
+    if torch.cuda.is_available():
+        torch_device = "cuda"
+    else:
+        torch_device = "cpu"
+    return torch_device
