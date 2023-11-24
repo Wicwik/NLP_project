@@ -7,7 +7,7 @@ import functools
 
 import numpy as np
 
-from peft import TaskType, PeftType, PromptTuningConfig, PromptTuningInit, PeftConfig, PeftModel, get_peft_model
+from peft import TaskType, PeftType, PromptTuningConfig, PeftConfig, PeftModel, get_peft_model
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, get_linear_schedule_with_warmup, DataCollatorForSeq2Seq
 from torch.utils.data import DataLoader
 from tqdm import tqdm

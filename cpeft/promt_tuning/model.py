@@ -1,7 +1,7 @@
 import torch
 
 class PromptTunningEmbedding(torch.nn.Module):
-    def __init__(self, config):
+    def __init__(self, config, word_embeddings):
         super().__init__()
 
         total_virtual_tokens = config.num_virtual_tokens * config.num_transformer_submodules
