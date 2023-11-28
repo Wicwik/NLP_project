@@ -4,7 +4,7 @@ from .utils import _prepare_prompt_learning_config
 
 from transformers import PreTrainedModel
 
-def get_peft_model(model: PreTrainedModel, peft_config: PeftConfig, adapter_name: str = "seq2seq_peft") -> PeftModel:
+def get_peft_model(model: PreTrainedModel, peft_config: PeftConfig, adapter_name: str = "peft") -> PeftModel:
 
     model_config = model.config
     if hasattr(model_config, "to_dict"):

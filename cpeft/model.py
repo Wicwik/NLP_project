@@ -1,11 +1,13 @@
 import torch
-from cpeft import PeftConfig, PromptTunningEmbedding
+import os
+from cpeft import PeftConfig, PromptTunningEmbedding, PromptTuningConfig
 
 from transformers import PreTrainedModel
 from transformers.utils import PushToHubMixin
-from typing import Dict
+from typing import Dict, Any, List, Optional
 
-from .utils import _prepare_prompt_learning_config
+from .utils import _prepare_prompt_learning_config, infer_device
+from .save_and_load import get_peft_model_state_dict, set_peft_model_state_dict, load_peft_weights
 
 class PeftModel(PushToHubMixin, torch.nn.Module):
     def __init__(self, model: PreTrainedModel, peft_config: PeftConfig, adapter_name: str = "peft"):
@@ -22,12 +24,44 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
         if hasattr(self.base_model, "config") and hasattr(self.base_model.config, "pretraining_tp"):
             self.base_model.config.pretraining_tp = 1
 
-    def save_pretrained(self):
-        pass
+    def save_pretrained(self, save_directory: str, selected_adapters: Optional[List[str]] = None, **kwargs: Any):
+        if os.path.isfile(save_directory):
+            raise ValueError(f"{save_directory} is not a directory.")
+
+        if selected_adapters is None:
+            selected_adapters = list(self.peft_config.keys())
+
+        os.makedirs(save_directory, exist_ok=True)
+
+        for adapter_name in selected_adapters:
+            peft_config = self.peft_config[adapter_name]
+            output_state_dict = get_peft_model_state_dict(self, state_dict=kwargs.get("state_dict", None), adapter_name=adapter_name)
+            output_dir = os.path.join(save_directory, adapter_name) if adapter_name != "peft" else save_directory
+
+            os.makedirs(output_dir, exist_ok=True)
+
+            torch.save(output_state_dict, os.path.join(output_dir, "adapter_model.bin"))
+
+            inference_mode = peft_config.inference_mode
+            peft_config.inference_mode = True
+
+            peft_config.save_pretrained(output_dir)
+            peft_config.inference_mode = inference_mode
 
     @classmethod
-    def load_pretrained(self):
-        pass
+    def from_pretrained(cls, model: PreTrainedModel, model_id: str, adapter_name: str = "peft", is_trainable: bool = False, config: Optional[PeftConfig] = None, **kwargs: Any):
+        if config is None:
+            config = PromptTuningConfig.from_pretrained(model_id, **kwargs)
+
+        if config.is_prompt_learning and is_trainable:
+            raise ValueError("Cannot set a prompt learning adapter to trainable when loading pretrained adapter.")
+        else:
+            config.inference_mode = not is_trainable
+
+        model = PeftModelForSeq2SeqLM(model, config, adapter_name)
+        model.load_adapter(model_id, adapter_name, is_trainable=is_trainable, **kwargs)
+
+        return model
 
     @property
     def peft_config(self) -> Dict[str, str]:
@@ -49,6 +83,24 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
             peft_config = _prepare_prompt_learning_config(peft_config, dict_config)
             self._setup_prompt_encoder(adapter_name)
+
+    def load_adapter(self, model_id: str, adapter_name: str, is_trainable: bool = False, **kwargs: Any):
+        torch_device = infer_device()
+
+        adapters_weights = load_peft_weights(model_id, device=torch_device, **kwargs)
+
+        load_result = set_peft_model_state_dict(self, adapters_weights, adapter_name=adapter_name)
+
+        if not is_trainable:
+            self.eval()
+
+        return load_result
+    
+    def get_prompt_embedding_to_save(self, adapter_name: str):
+        prompt_encoder = self.prompt_encoder[adapter_name]
+        prompt_tokens = (self.prompt_tokens[adapter_name].unsqueeze(0).expand(1, -1).to(prompt_encoder.embedding.weight.device))
+        prompt_embeddings = prompt_encoder(prompt_tokens)
+        return prompt_embeddings[0].detach().cpu()
 
     def _setup_prompt_encoder(self, adapter_name):
         config = self.peft_config[adapter_name]
