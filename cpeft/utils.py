@@ -1,5 +1,7 @@
 import torch
 
+from typing import Optional
+
 from .config import PeftConfig
 
 def _prepare_prompt_learning_config(peft_config: PeftConfig, model_config):
@@ -12,6 +14,12 @@ def _prepare_prompt_learning_config(peft_config: PeftConfig, model_config):
 
     return peft_config
 
+def _get_batch_size(input_ids: Optional[torch.Tensor], inputs_embeds: Optional[torch.Tensor]) -> int:
+    if input_ids is not None:
+        batch_size = input_ids.shape[0]
+    else:
+        batch_size = inputs_embeds.shape[0]
+    return batch_size
 
 def infer_device():
     if torch.cuda.is_available():
