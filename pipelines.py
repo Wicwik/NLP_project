@@ -7,14 +7,16 @@ import functools
 
 import numpy as np
 
-# from peft import TaskType
-from cpeft import PromptTuningConfig, PeftConfig, PeftModel, get_peft_model
+from peft import TaskType
+from peft import PromptTuningConfig, PeftModel, get_peft_model
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, get_linear_schedule_with_warmup, DataCollatorForSeq2Seq
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from datetime import datetime
 
 import huggingface_hub
+
+import torch.nn.functional as F
 
 from tasks import AutoTask
 
@@ -92,6 +94,7 @@ class peft_training_pipeline:
     def compute_metrics(self, preds, labels, tokenizer, config, prefix):
         postprocessor = AutoTask.get(config['datasets'][0], config).postprocessor
         decoded_preds, decoded_labels = postprocessor(preds, labels, tokenizer, ignore_pad_token_for_loss=True)
+        # if prefix == "valid":
         print(decoded_preds, decoded_labels)
         
         return {f"{prefix}_{n}": m(decoded_preds, decoded_labels).float() for n, m in self.metric_fs.items()}
@@ -115,6 +118,7 @@ class peft_training_pipeline:
             batch = {k: v.to(config["device"]) for k, v in batch.items()}
             outputs = model(**batch)
             preds = model.generate(**batch)
+            # preds = torch.argmax(outputs.logits, -1)
 
             loss = outputs.loss
             train_loss += loss.detach().float()
@@ -140,16 +144,18 @@ class peft_training_pipeline:
         valid_loss = 0
         metrics = {}
 
-        for _, batch in enumerate(tqdm(valid_dataloader)):
-            batch = {k: v.to(config["device"]) for k, v in batch.items()}
-            with torch.no_grad():
+        with torch.no_grad():
+            for _, batch in enumerate(tqdm(valid_dataloader)):
+                batch = {k: v.to(config["device"]) for k, v in batch.items()}
                 outputs = model(**batch)
-            
-            preds = model.generate(**batch)
+                
+                preds = model.generate(**batch)
+                # preds = torch.argmax(outputs.logits, -1)
 
-            loss = outputs.loss
-            valid_loss += loss.detach().float()
-            metrics = self.compute_metrics(preds.cpu(), batch["labels"].cpu(), tokenizer, config, "valid")
+                loss = outputs.loss
+                valid_loss += loss.detach().float()
+                metrics = self.compute_metrics(preds.cpu(), batch["labels"].cpu(), tokenizer, config, "valid")
+                print(metrics)
 
         metrics = self.compute_metrics_all("valid")
         metrics.update({"valid_loss": valid_loss / len(valid_dataloader)})
@@ -160,7 +166,7 @@ class peft_training_pipeline:
         return metrics
 
 
-    def test(self, model, config, test_dataloader, checkpoint_name, tokenizer):
+    def test(self, config, test_dataloader, checkpoint_name, tokenizer):
         model = AutoModelForSeq2SeqLM.from_pretrained(config["model_name_or_path"])
         model = PeftModel.from_pretrained(model, checkpoint_name)
 
@@ -193,8 +199,8 @@ class peft_training_pipeline:
         self.hf_login()
 
         for config in self.configs:
-            peft_config = PromptTuningConfig(task_type=config["task_type"], num_virtual_tokens=config["num_virtual_tokens"])
-            # peft_config = PromptTuningConfig(task_type=TaskType.SEQ_2_SEQ_LM, num_virtual_tokens=config["num_virtual_tokens"])
+            # peft_config = PromptTuningConfig(task_type=config["task_type"], num_virtual_tokens=config["num_virtual_tokens"])
+            peft_config = PromptTuningConfig(task_type=TaskType.SEQ_2_SEQ_LM, num_virtual_tokens=config["num_virtual_tokens"])
 
             for nr in range(config["n_runs"]):
                 model = AutoModelForSeq2SeqLM.from_pretrained(config["model_name_or_path"]) # this can be either put into config or automated
@@ -236,7 +242,7 @@ class peft_training_pipeline:
                     wandb.log(metrics)
                     print(f"{epoch=},",metrics)
 
-                test_metrics = self.test(model, config, test_dataloader, checkpoint_name)
+                test_metrics = self.test(config, test_dataloader, checkpoint_name, tokenizer)
                 wandb.log(test_metrics)
                 print(test_metrics)
 
