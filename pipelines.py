@@ -99,7 +99,7 @@ class peft_training_pipeline:
         postprocessor = AutoTask.get(config['datasets'][0], config).postprocessor
         decoded_preds, decoded_labels = postprocessor(preds, labels, tokenizer, ignore_pad_token_for_loss=True)
         # if prefix == "valid":
-        print(decoded_preds, decoded_labels)
+        # print(decoded_preds, decoded_labels)
 
         metrics = {n: m(decoded_preds, decoded_labels) for n, m in self.metric_fs.items()}
 
