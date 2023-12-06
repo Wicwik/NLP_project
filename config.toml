@@ -12,7 +12,7 @@ peft_type = "prompt_tunning"
 task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
 n_runs = 10
-wandb_project = "prompt_tunning"
+wandb_project = "prompt_tunning_soft_prompt_experiments"
 max_source_length = 256
 
 
@@ -30,7 +30,7 @@ peft_type = "prompt_tunning"
 task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
 n_runs = 10
-wandb_project = "prompt_tunning"
+wandb_project = "prompt_tunning_soft_prompt_experiments"
 max_source_length = 256
 
 [[configs]]
@@ -47,7 +47,7 @@ peft_type = "prompt_tunning"
 task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
 n_runs = 10
-wandb_project = "prompt_tunning"
+wandb_project = "prompt_tunning_soft_prompt_experiments"
 max_source_length = 256
 
 [[configs]]
@@ -64,7 +64,7 @@ peft_type = "prompt_tunning"
 task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
 n_runs = 10
-wandb_project = "prompt_tunning"
+wandb_project = "prompt_tunning_soft_prompt_experiments"
 max_source_length = 256
 
 
@@ -82,7 +82,7 @@ peft_type = "prompt_tunning"
 task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
 n_runs = 10
-wandb_project = "prompt_tunning"
+wandb_project = "prompt_tunning_soft_prompt_experiments"
 max_source_length = 256
 
 [[configs]]
@@ -99,7 +99,7 @@ peft_type = "prompt_tunning"
 task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
 n_runs = 10
-wandb_project = "prompt_tunning"
+wandb_project = "prompt_tunning_soft_prompt_experiments"
 max_source_length = 256
 
 [[configs]]
@@ -116,5 +116,5 @@ peft_type = "prompt_tunning"
 task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
 n_runs = 10
-wandb_project = "prompt_tunning"
+wandb_project = "prompt_tunning_soft_prompt_experiments"
 max_source_length = 256
