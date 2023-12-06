@@ -102,6 +102,7 @@ class peft_training_pipeline:
         print(decoded_preds, decoded_labels)
 
         metrics = {n: m(decoded_preds, decoded_labels) for n, m in self.metric_fs.items()}
+        print(metrics)
 
         result_m = {}
         for n,m in metrics:
