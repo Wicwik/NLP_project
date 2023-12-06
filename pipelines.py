@@ -83,7 +83,11 @@ class peft_training_pipeline:
 
         train_dataloader = DataLoader(dataset["train"], shuffle=True, collate_fn=data_collator, batch_size=config["batch_size"], pin_memory=True)
         valid_dataloader = DataLoader(dataset["validation"], collate_fn=data_collator, batch_size=config["batch_size"], pin_memory=True)
-        test_dataloader = DataLoader(dataset["test"], collate_fn=data_collator, batch_size=config["batch_size"], pin_memory=True)
+
+        if "test" in dataset:
+            test_dataloader = DataLoader(dataset["test"], collate_fn=data_collator, batch_size=config["batch_size"], pin_memory=True)
+        else:
+            test_dataloader = DataLoader(dataset["validation"], collate_fn=data_collator, batch_size=config["batch_size"], pin_memory=True)
 
         return train_dataloader, valid_dataloader, test_dataloader
     
