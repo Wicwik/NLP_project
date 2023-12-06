@@ -17,7 +17,6 @@ from utils import pad_punctuation
 
 class AbstractTask:
     name = NotImplemented
-    labels_list = NotImplemented
     preprocessor = NotImplemented
     formater = NotImplemented
     metrics = NotImplemented
@@ -25,6 +24,8 @@ class AbstractTask:
     config = NotImplemented
     dataset_config_name = NotImplemented
     seed = NotImplemented
+    labels_list = None
+    split_map = None
 
     
     def __init__(self, config, seed=256):
@@ -194,11 +195,11 @@ class SuperGLUERecord(AbstractTask):
 TASK_MAPPING = OrderedDict(
     [
         # TODO implment all
-        ('squad', Squad),
-        ('mrpc', MRPC),
+        ("squad", Squad),
+        ("mrpc", MRPC),
         # ('cola', COLA),
-        ('sst2', SST2),
-        ('qnli', QNLI),
+        ("sst2", SST2),
+        ("qnli", QNLI),
         # ('rte', RTE),
         # ('wnli', WNLI),
         ('mnli', MNLI),
