@@ -102,10 +102,9 @@ class peft_training_pipeline:
         print(decoded_preds, decoded_labels)
 
         metrics = {n: m(decoded_preds, decoded_labels) for n, m in self.metric_fs.items()}
-        print(metrics)
 
         result_m = {}
-        for n,m in metrics:
+        for n,m in metrics.items():
             if n == "squad":
                 result_m[f"{prefix}_{n}_em"] = m["em"]
                 result_m[f"{prefix}_{n}_f1"] = m["f1"]
