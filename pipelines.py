@@ -199,8 +199,8 @@ class peft_training_pipeline:
         self.hf_login()
 
         for config in self.configs:
-            # peft_config = PromptTuningConfig(task_type=config["task_type"], num_virtual_tokens=config["num_virtual_tokens"])
-            peft_config = PromptTuningConfig(task_type="seq_2_seq_lm", num_virtual_tokens=config["num_virtual_tokens"])
+            peft_config = PromptTuningConfig(task_type=config["task_type"], num_virtual_tokens=config["num_virtual_tokens"])
+            # peft_config = PromptTuningConfig(task_type=TaskType.SEQ_2_SEQ_LM, num_virtual_tokens=config["num_virtual_tokens"])
 
             for nr in range(config["n_runs"]):
                 model = AutoModelForSeq2SeqLM.from_pretrained(config["model_name_or_path"]) # this can be either put into config or automated
