@@ -100,8 +100,19 @@ class peft_training_pipeline:
         decoded_preds, decoded_labels = postprocessor(preds, labels, tokenizer, ignore_pad_token_for_loss=True)
         # if prefix == "valid":
         print(decoded_preds, decoded_labels)
-        
-        return {f"{prefix}_{n}": m(decoded_preds, decoded_labels).float() for n, m in self.metric_fs.items()}
+
+        metrics = {n: m(decoded_preds, decoded_labels) for n, m in self.metric_fs.items()}
+
+        result_m = {}
+        for n,m in metrics:
+            if n == "squad":
+                result_m[f"{prefix}_{n}_em"] = m["em"]
+                result_m[f"{prefix}_{n}_f1"] = m["f1"]
+
+            else:
+                result_m[n] = m
+                        
+        return result_m
     
     def compute_metrics_all(self, prefix):
         return {f"{prefix}_{n}": m.compute() for n, m in self.metric_fs.items()}
