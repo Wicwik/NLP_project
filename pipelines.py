@@ -7,8 +7,8 @@ import functools
 
 import numpy as np
 
-from peft import TaskType
-from peft import PromptTuningConfig, PeftModel, get_peft_model
+# from peft import TaskType
+from cpeft import PromptTuningConfig, PeftModel, get_peft_model
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, get_linear_schedule_with_warmup, DataCollatorForSeq2Seq
 from torch.utils.data import DataLoader
 from tqdm import tqdm
@@ -200,7 +200,7 @@ class peft_training_pipeline:
 
         for config in self.configs:
             # peft_config = PromptTuningConfig(task_type=config["task_type"], num_virtual_tokens=config["num_virtual_tokens"])
-            peft_config = PromptTuningConfig(task_type=TaskType.SEQ_2_SEQ_LM, num_virtual_tokens=config["num_virtual_tokens"])
+            peft_config = PromptTuningConfig(task_type="seq_2_seq_lm", num_virtual_tokens=config["num_virtual_tokens"])
 
             for nr in range(config["n_runs"]):
                 model = AutoModelForSeq2SeqLM.from_pretrained(config["model_name_or_path"]) # this can be either put into config or automated
