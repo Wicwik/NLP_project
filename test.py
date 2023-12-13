@@ -3,7 +3,7 @@ import tomllib
 
 
 data = None
-with open("config.toml", "rb") as f:
+with open("./config.toml", "rb") as f:
     data = tomllib.load(f)
 
 tp = peft_training_pipeline(configs=data["configs"])

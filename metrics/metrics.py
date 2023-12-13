@@ -6,8 +6,6 @@ from .utils import normalize_squad, qa_metrics
 from torchmetrics import Metric
 from torchmetrics.functional import confusion_matrix
 
-from typing import Union, List
-
 # some are reused from https://github.com/AkariAsai/ATTEMPT/blob/main/attempt/metrics/metrics.py
 
 # compute a f1 score from a list of strings
