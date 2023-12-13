@@ -13,7 +13,7 @@ task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
 n_runs = 10
 wandb_project = "prompt_tunning_soft_prompt_experiments"
-max_source_length = 256
+max_source_length = 128
 
 
 [[configs]]
@@ -31,7 +31,7 @@ task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
 n_runs = 10
 wandb_project = "prompt_tunning_soft_prompt_experiments"
-max_source_length = 256
+max_source_length = 128
 
 [[configs]]
 datasets = ["sst2"]
@@ -48,7 +48,7 @@ task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
 n_runs = 10
 wandb_project = "prompt_tunning_soft_prompt_experiments"
-max_source_length = 256
+max_source_length = 128
 
 [[configs]]
 datasets = ["qnli"]
@@ -65,7 +65,7 @@ task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
 n_runs = 10
 wandb_project = "prompt_tunning_soft_prompt_experiments"
-max_source_length = 256
+max_source_length = 128
 
 
 [[configs]]
@@ -83,7 +83,7 @@ task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
 n_runs = 10
 wandb_project = "prompt_tunning_soft_prompt_experiments"
-max_source_length = 256
+max_source_length = 128
 
 [[configs]]
 datasets = ["qqp"]
@@ -100,7 +100,7 @@ task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
 n_runs = 10
 wandb_project = "prompt_tunning_soft_prompt_experiments"
-max_source_length = 256
+max_source_length = 128
 
 [[configs]]
 datasets = ["superglue-record"]
@@ -117,4 +117,4 @@ task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
 n_runs = 10
 wandb_project = "prompt_tunning_soft_prompt_experiments"
-max_source_length = 256
+max_source_length = 128

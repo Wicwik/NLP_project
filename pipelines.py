@@ -2,7 +2,6 @@
 
 import torch
 import wandb
-import datasets
 import functools
 
 import numpy as np
@@ -19,26 +18,6 @@ import huggingface_hub
 import torch.nn.functional as F
 
 from tasks import AutoTask
-
-# so hidden https://github.com/huggingface/peft/blob/main/src/peft/utils/peft_types.py
-# PEFT_TASK_MAPPING = {
-#     "seq_cls": TaskType.SEQ_CLS,
-#     "seq_2_seq_lm": TaskType.SEQ_2_SEQ_LM,
-#     "causal_lm": TaskType.CAUSAL_LM,
-#     "token_cls": TaskType.TOKEN_CLS,
-#     "question_ans": TaskType.QUESTION_ANS,
-#     "feature_extraction": TaskType.FEATURE_EXTRACTION
-# }
-
-# PEFT_TYPE_MAPPING = {
-#     "prompt_tunning": PeftType.PROMPT_TUNING,
-#     "p_tunning": PeftType.P_TUNING,
-#     "prefix_tunning": PeftType.PREFIX_TUNING,
-#     "lora": PeftType.LORA,
-#     "adalora": PeftType.ADALORA,
-#     "adaption_prompt": PeftType.ADAPTION_PROMPT,
-#     "ia3": PeftType.IA3,
-# }
 
 class peft_training_pipeline:
     configs = None
@@ -211,7 +190,7 @@ class peft_training_pipeline:
 
 
     def run(self):
-        self.hf_login()
+        # self.hf_login()
 
         for config in self.configs:
             peft_config = PromptTuningConfig(task_type=config["task_type"], num_virtual_tokens=config["num_virtual_tokens"])
