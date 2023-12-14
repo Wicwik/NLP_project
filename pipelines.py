@@ -41,13 +41,6 @@ class peft_training_pipeline:
         inputs["extra_fields"] = examples['extra_fields']
 
         return inputs
-    
-    @staticmethod
-    def hf_login():
-        huggingface_hub.login(token="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")
-    
-    def push_to_hf(self, model, checkpoint_name):
-        model.push_to_hub(f"rbelanec/{checkpoint_name}", use_auth_token=True)
 
     # TODO add random split indices
     def get_data(self, config, tokenizer, model, add_prefix=True):
@@ -78,7 +71,7 @@ class peft_training_pipeline:
         postprocessor = AutoTask.get(config['datasets'][0], config).postprocessor
         decoded_preds, decoded_labels = postprocessor(preds, labels, tokenizer, ignore_pad_token_for_loss=True)
         # if prefix == "valid":
-        # print(decoded_preds, decoded_labels)
+        print(decoded_preds, decoded_labels)
 
         metrics = {n: m(decoded_preds, decoded_labels) for n, m in self.metric_fs.items()}
 
@@ -107,12 +100,13 @@ class peft_training_pipeline:
         model.train()
         train_loss = 0
         metrics = {}
+        max_new_tokens = AutoTask.get(config['datasets'][0], config).get_max_target_length(tokenizer, default_max_length=config["max_target_length"])
 
         for _, batch in enumerate(tqdm(train_dataloader)):
             batch = {k: v.to(config["device"]) for k, v in batch.items()}
             outputs = model(**batch)
-            preds = model.generate(**batch)
-            # preds = torch.argmax(outputs.logits, -1)
+
+            preds = model.generate(**batch, max_new_tokens=max_new_tokens)
 
             loss = outputs.loss
             train_loss += loss.detach().float()
@@ -137,19 +131,18 @@ class peft_training_pipeline:
         model.eval()
         valid_loss = 0
         metrics = {}
+        max_new_tokens = AutoTask.get(config['datasets'][0], config).get_max_target_length(tokenizer, default_max_length=config["max_target_length"])
 
         with torch.no_grad():
             for _, batch in enumerate(tqdm(valid_dataloader)):
                 batch = {k: v.to(config["device"]) for k, v in batch.items()}
                 outputs = model(**batch)
                 
-                preds = model.generate(**batch)
-                # preds = torch.argmax(outputs.logits, -1)
+                preds = model.generate(**batch, max_new_tokens=max_new_tokens)
 
                 loss = outputs.loss
                 valid_loss += loss.detach().float()
                 metrics = self.compute_metrics(preds.cpu(), batch["labels"].cpu(), tokenizer, config, "valid")
-                print(metrics)
 
         metrics = self.compute_metrics_all("valid")
         metrics.update({"valid_loss": valid_loss / len(valid_dataloader)})
@@ -169,12 +162,14 @@ class peft_training_pipeline:
         valid_loss = 0
         metrics = {}
 
+        max_new_tokens = AutoTask.get(config['datasets'][0], config).get_max_target_length(tokenizer, default_max_length=config["max_target_length"])
+
         for _, batch in enumerate(tqdm(test_dataloader)):
             batch = {k: v.to(config["device"]) for k, v in batch.items()}
             with torch.no_grad():
                 outputs = model(**batch)
 
-            preds = model.generate(**batch)
+            preds = model.generate(**batch, max_new_tokens=max_new_tokens)
 
             loss = outputs.loss
             valid_loss += loss.detach().float()
@@ -190,8 +185,6 @@ class peft_training_pipeline:
 
 
     def run(self):
-        # self.hf_login()
-
         for config in self.configs:
             peft_config = PromptTuningConfig(task_type=config["task_type"], num_virtual_tokens=config["num_virtual_tokens"])
             # peft_config = PromptTuningConfig(task_type=TaskType.SEQ_2_SEQ_LM, num_virtual_tokens=config["num_virtual_tokens"])
@@ -207,7 +200,7 @@ class peft_training_pipeline:
 
                 optimizer = torch.optim.AdamW(model.parameters(), lr=config["learning_rate"])
 
-                tokenizer = AutoTokenizer.from_pretrained(config["tokenizer_name_or_path"])
+                tokenizer = AutoTokenizer.from_pretrained(config["tokenizer_name_or_path"], model_max_length=512)
                 if tokenizer.pad_token_id is None:
                     tokenizer.pad_token_id = tokenizer.eos_token_id
 
@@ -227,7 +220,6 @@ class peft_training_pipeline:
 
                         checkpoint_name = f"{config['model_name_or_path']}_{peft_config.peft_type}_{peft_config.task_type}_{timestamp}_run-{nr+1}"
                         model.save_pretrained(checkpoint_name)
-                        # self.push_to_hf(model, checkpoint_name)
                         
                         artifact = wandb.Artifact(name=f"{config['model_name_or_path']}_{peft_config.peft_type}_{peft_config.task_type}_{timestamp}_run-{nr+1}", type="weights")
                         artifact.add_dir(local_path=checkpoint_name)
