@@ -1,6 +1,6 @@
 import torch
 
-class PromptTunningEmbedding(torch.nn.Module):
+class PromptTuningEmbedding(torch.nn.Module):
     def __init__(self, config, word_embeddings):
         super().__init__()
 

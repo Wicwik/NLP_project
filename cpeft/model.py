@@ -1,6 +1,6 @@
 import torch
 import os
-from cpeft import PeftConfig, PromptTunningEmbedding, PromptTuningConfig
+from cpeft import PeftConfig, PromptTuningEmbedding, PromptTuningConfig
 
 from transformers import PreTrainedModel
 from transformers.utils import PushToHubMixin
@@ -53,7 +53,12 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
     @classmethod
     def from_pretrained(cls, model: PreTrainedModel, model_id: str, adapter_name: str = "peft", is_trainable: bool = False, config: Optional[PeftConfig] = None, **kwargs: Any):
         if config is None:
-            config = PromptTuningConfig.from_pretrained(model_id, **kwargs)
+            model_path = model_id
+
+            if adapter_name != "peft":
+                model_path = os.path.join(model_id, adapter_name)
+            
+            config = PromptTuningConfig.from_pretrained(model_path, **kwargs)
 
         if config.is_prompt_learning and is_trainable:
             raise ValueError("Cannot set a prompt learning adapter to trainable when loading pretrained adapter.")
@@ -61,7 +66,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
             config.inference_mode = not is_trainable
 
         model = PeftModelForSeq2SeqLM(model, config, adapter_name)
-        model.load_adapter(model_id, adapter_name, is_trainable=is_trainable, **kwargs)
+        model.load_adapter(model_path, adapter_name, is_trainable=is_trainable, **kwargs)
 
         return model
 
@@ -178,7 +183,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
                 break
 
         if config.peft_type == "prompt_tuning":
-            prompt_encoder = PromptTunningEmbedding(config, self.word_embeddings)
+            prompt_encoder = PromptTuningEmbedding(config, self.word_embeddings)
 
         prompt_encoder = prompt_encoder.to(self.device)
         self.prompt_encoder.update(torch.nn.ModuleDict({adapter_name: prompt_encoder}))

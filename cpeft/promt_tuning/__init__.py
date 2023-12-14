@@ -1,2 +1,2 @@
 from .config import PromptTuningConfig
-from .model import PromptTunningEmbedding
+from .model import PromptTuningEmbedding
