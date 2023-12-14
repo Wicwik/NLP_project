@@ -1,1 +1,1 @@
-from .metrics import F1ScoreWithInvalid, Accuraccy
+from .metrics import F1ScoreWithInvalid, Accuraccy, SquadMetric

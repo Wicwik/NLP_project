@@ -3,17 +3,20 @@
 import functools
 import datasets
 import numpy as np
+import regex as re
+import collections
 
 
 from .type import AutoType
 
 from collections import OrderedDict
-from metrics import F1ScoreWithInvalid, Accuraccy
+from metrics import F1ScoreWithInvalid, Accuraccy, SquadMetric
+
+from utils import pad_punctuation
 
 
 class AbstractTask:
     name = NotImplemented
-    labels_list = NotImplemented
     preprocessor = NotImplemented
     formater = NotImplemented
     metrics = NotImplemented
@@ -21,6 +24,8 @@ class AbstractTask:
     config = NotImplemented
     dataset_config_name = NotImplemented
     seed = NotImplemented
+    labels_list = None
+    split_map = None
 
     
     def __init__(self, config, seed=256):
@@ -59,6 +64,25 @@ class AbstractTask:
         dataset = self.load_dataset(split=split)
 
         return self.map_dataset(dataset, add_prefix)
+
+class Squad(AbstractTask):
+    name = "squad"
+    metrics = [SquadMetric]
+    metric_names = ["SquadMetric"]
+
+    def load_dataset(self, split):
+        return datasets.load_dataset(self.name, split=split)
+    
+    def preprocessor(self, example, add_prefix):
+        answer = pad_punctuation(example["answers"]).split("\t")
+        question = pad_punctuation(example["question"])
+        context = pad_punctuation(example["context"])
+
+        input_texts = ["question:", question,"context:", context]
+        label_texts = [answer] if type(answer) == str else answer
+
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
+
 class MRPC(AbstractTask):
     name = "mrpc"
     labels_list = ["0", "1"]
@@ -69,25 +93,117 @@ class MRPC(AbstractTask):
         return datasets.load_dataset("glue", self.name, split=split)
     
     def preprocessor(self, example, add_prefix=True):
-        input_texts = ["sentence1:", example['sentence1'],
-                       "sentence2:", example["sentence2"]]
-        
-        label_texts = [str(example['label'])]
+        input_texts = ["sentence1:", example['sentence1'], "sentence2:", example["sentence2"]]
+        label_texts = [str(example["label"])]
 
         return self.formater(self.name, input_texts, label_texts, add_prefix)
+    
+class SST2(AbstractTask):
+    name = "sst2"
+    labels_list = ["0", "1"]
+    metrics = [Accuraccy]
+    metric_names = ["accuracy"]
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("glue", self.name, split=split)
+    
+    def preprocessor(self, example, add_prefix=True):
+        input_texts = ["sentence", example["sentence"]]
+        label_texts = [str(example["label"])]
+
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
+
+class QNLI(AbstractTask):
+    name = "qnli"
+    labels_list = ["0", "1"]
+    metrics = [Accuraccy]
+    metric_names = ["accuracy"]
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("glue", self.name, split=split)
+    
+    def preprocessor(self, example, add_prefix=True):
+        input_texts = ["question:", example["question"], "sentence:", example["sentence"]]
+        label_texts = [str(example["label"])]
+
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
+    
+class MNLI(AbstractTask):
+    name = "mnli"
+    labels_list = ["0", "1", "2"]
+    metrics = [Accuraccy]
+    metric_names = ["accuracy"]
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("glue", self.name, split=split)
+    
+    def preprocessor(self, example, add_prefix=True):
+        input_texts = ["premise:", example["premise"], "hypothesis:", example["hypothesis"]]
+        label_texts = [str(example["label"])]
+
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
+    
+class QQP(AbstractTask):
+    name = "qqp"
+    labels_list = ["0", "1"]
+    metrics = [Accuraccy, F1ScoreWithInvalid]
+    metric_names = ["accuracy", "f1"]
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("glue", self.name, split=split)
+    
+    def preprocessor(self, example, add_prefix=True):
+        input_texts = ["question1:", example["question1"], "question2:", example["question2"]]
+        label_texts = [str(example["label"])]
+
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
+    
+class SuperGLUERecord(AbstractTask):
+    name = "superglue-record"
+    metrics = [SquadMetric]
+    metric_names = ["SquadMetric"]
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("super_glue", self.name, split=split)
+    
+    def preprocessor(self, batch, add_prefix=True):
+        new_batch = collections.defaultdict(list)
+        keys = batch.keys()
+        for values in zip(*batch.values()):
+            ex = {k: v for k, v in zip(keys, values)}
+            # updates the passage.
+            passage = ex["passage"]
+            passage = re.sub(r'(\.|\?|\!|\"|\')\n@highlight\n', r'\1 ', passage)
+            passage = re.sub(r'\n@highlight\n', '. ', passage)
+            inputs = f"record query: {ex['query']} entities: {', '.join(ex['entities'])} passage: {passage}"
+            if add_prefix:
+                inputs = self.name + " " + inputs
+
+            # duplicates the samples based on  number of answers.
+            num_answers = len(ex["answers"])
+            num_duplicates = np.maximum(1, num_answers)
+            new_batch["source"].extend([inputs] * num_duplicates)
+            new_batch["target"].extend(ex["answers"] if num_answers > 0 else ["<unk>"])
+            new_batch["task"].extend([self.name] * num_duplicates)
+            new_batch["extra_fields"].extend([{"answers": ex["answers"]}]*num_duplicates)
+        
+        return new_batch
+    
+    def map_dataset(self, dataset, add_prefix=True):
+        return dataset.map(functools.partial(self.preprocessor, add_prefix=add_prefix), batched=True, remove_columns=dataset.column_names)
 
 TASK_MAPPING = OrderedDict(
     [
         # TODO implment all
-        # ('squad', Squad),
-        ('mrpc', MRPC),
+        ("squad", Squad),
+        ("mrpc", MRPC),
         # ('cola', COLA),
-        # ('sst2', SST2),
-        # ('qnli', QNLI),
+        ("sst2", SST2),
+        ("qnli", QNLI),
         # ('rte', RTE),
         # ('wnli', WNLI),
-        # ('mnli', MNLI),
-        # ('qqp', QQP),
+        ('mnli', MNLI),
+        ('qqp', QQP),
         # ('stsb', STSB),
         # ('superglue-boolq', SuperGLUEBoolQ),
         # ('superglue-rte', SuperGLUERTE),
@@ -96,7 +212,7 @@ TASK_MAPPING = OrderedDict(
         # ('superglue-multirc', SuperGLUEMultiRC),
         # ('superglue-wic', SuperGLUEWIC),
         # ('superglue-wsc.fixed', SuperGLUEWSCFixed),
-        # ('superglue-record', SuperGLUERecord),
+        ('superglue-record', SuperGLUERecord),
         # ('multi_nli', MultiNLI),
         # ('snli', SNLI),
         # ('piqa', PIQA),

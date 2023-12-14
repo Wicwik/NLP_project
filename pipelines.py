@@ -2,39 +2,22 @@
 
 import torch
 import wandb
-import datasets
 import functools
 
 import numpy as np
 
-from peft import TaskType, PeftType, PromptTuningConfig, PromptTuningInit, PeftConfig, PeftModel, get_peft_model
+# from peft import TaskType
+from cpeft import PromptTuningConfig, PeftModel, get_peft_model
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, get_linear_schedule_with_warmup, DataCollatorForSeq2Seq
 from torch.utils.data import DataLoader
 from tqdm import tqdm
+from datetime import datetime
 
 import huggingface_hub
 
+import torch.nn.functional as F
+
 from tasks import AutoTask
-
-# so hidden https://github.com/huggingface/peft/blob/main/src/peft/utils/peft_types.py
-PEFT_TASK_MAPPING = {
-    "seq_cls": TaskType.SEQ_CLS,
-    "seq_2_seq_lm": TaskType.SEQ_2_SEQ_LM,
-    "causal_lm": TaskType.CAUSAL_LM,
-    "token_cls": TaskType.TOKEN_CLS,
-    "question_ans": TaskType.QUESTION_ANS,
-    "feature_extraction": TaskType.FEATURE_EXTRACTION
-}
-
-PEFT_TYPE_MAPPING = {
-    "prompt_tunning": PeftType.PROMPT_TUNING,
-    "p_tunning": PeftType.P_TUNING,
-    "prefix_tunning": PeftType.PREFIX_TUNING,
-    "lora": PeftType.LORA,
-    "adalora": PeftType.ADALORA,
-    "adaption_prompt": PeftType.ADAPTION_PROMPT,
-    "ia3": PeftType.IA3,
-}
 
 class peft_training_pipeline:
     configs = None
@@ -45,8 +28,8 @@ class peft_training_pipeline:
         self.configs = configs
         self.use_wandb = use_wandb
 
-    def init_wandb(self, config, nr):
-        return wandb.init(project=config["wandb_project"], config=config, name=f"{config['model_name_or_path']}_{config['peft_type']}_{config['task_type']}_{'-'.join(config['datasets'][0])}_run-{nr+1}")
+    def init_wandb(self, config, timestamp, nr):
+        return wandb.init(project=config["wandb_project"], config=config, name=f"{config['model_name_or_path']}_{config['peft_type']}_{config['task_type']}_{'_'.join(config['datasets'])}_{timestamp}_run-{nr+1}")
 
     def preprocess_function(self, examples, config, tokenizer, max_target_length):
         inputs = tokenizer(examples["source"], max_length=config["max_source_length"], padding=False, truncation=True)
@@ -79,7 +62,11 @@ class peft_training_pipeline:
 
         train_dataloader = DataLoader(dataset["train"], shuffle=True, collate_fn=data_collator, batch_size=config["batch_size"], pin_memory=True)
         valid_dataloader = DataLoader(dataset["validation"], collate_fn=data_collator, batch_size=config["batch_size"], pin_memory=True)
-        test_dataloader = DataLoader(dataset["test"], collate_fn=data_collator, batch_size=config["batch_size"], pin_memory=True)
+
+        if "test" in dataset:
+            test_dataloader = DataLoader(dataset["test"], collate_fn=data_collator, batch_size=config["batch_size"], pin_memory=True)
+        else:
+            test_dataloader = DataLoader(dataset["validation"], collate_fn=data_collator, batch_size=config["batch_size"], pin_memory=True)
 
         return train_dataloader, valid_dataloader, test_dataloader
     
@@ -90,9 +77,21 @@ class peft_training_pipeline:
     def compute_metrics(self, preds, labels, tokenizer, config, prefix):
         postprocessor = AutoTask.get(config['datasets'][0], config).postprocessor
         decoded_preds, decoded_labels = postprocessor(preds, labels, tokenizer, ignore_pad_token_for_loss=True)
+        # if prefix == "valid":
         # print(decoded_preds, decoded_labels)
-        
-        return {f"{prefix}_{n}": m(decoded_preds, decoded_labels).float() for n, m in self.metric_fs.items()}
+
+        metrics = {n: m(decoded_preds, decoded_labels) for n, m in self.metric_fs.items()}
+
+        result_m = {}
+        for n,m in metrics.items():
+            if n == "squad":
+                result_m[f"{prefix}_{n}_em"] = m["em"]
+                result_m[f"{prefix}_{n}_f1"] = m["f1"]
+
+            else:
+                result_m[n] = m
+                        
+        return result_m
     
     def compute_metrics_all(self, prefix):
         return {f"{prefix}_{n}": m.compute() for n, m in self.metric_fs.items()}
@@ -113,6 +112,7 @@ class peft_training_pipeline:
             batch = {k: v.to(config["device"]) for k, v in batch.items()}
             outputs = model(**batch)
             preds = model.generate(**batch)
+            # preds = torch.argmax(outputs.logits, -1)
 
             loss = outputs.loss
             train_loss += loss.detach().float()
@@ -138,16 +138,18 @@ class peft_training_pipeline:
         valid_loss = 0
         metrics = {}
 
-        for _, batch in enumerate(tqdm(valid_dataloader)):
-            batch = {k: v.to(config["device"]) for k, v in batch.items()}
-            with torch.no_grad():
+        with torch.no_grad():
+            for _, batch in enumerate(tqdm(valid_dataloader)):
+                batch = {k: v.to(config["device"]) for k, v in batch.items()}
                 outputs = model(**batch)
-            
-            preds = model.generate(**batch)
+                
+                preds = model.generate(**batch)
+                # preds = torch.argmax(outputs.logits, -1)
 
-            loss = outputs.loss
-            valid_loss += loss.detach().float()
-            metrics = self.compute_metrics(preds.cpu(), batch["labels"].cpu(), tokenizer, config, "valid")
+                loss = outputs.loss
+                valid_loss += loss.detach().float()
+                metrics = self.compute_metrics(preds.cpu(), batch["labels"].cpu(), tokenizer, config, "valid")
+                print(metrics)
 
         metrics = self.compute_metrics_all("valid")
         metrics.update({"valid_loss": valid_loss / len(valid_dataloader)})
@@ -158,11 +160,9 @@ class peft_training_pipeline:
         return metrics
 
 
-    def test(self, model, config, test_dataloader, checkpoint_name, tokenizer):
-        peft_model_id = f"rbelanec/{checkpoint_name}"
-        peft_config = PeftConfig.from_pretrained(peft_model_id)
-        model = AutoModelForSeq2SeqLM.from_pretrained(peft_config.base_model_name_or_path)
-        model = PeftModel.from_pretrained(model, peft_model_id)
+    def test(self, config, test_dataloader, checkpoint_name, tokenizer):
+        model = AutoModelForSeq2SeqLM.from_pretrained(config["model_name_or_path"])
+        model = PeftModel.from_pretrained(model, checkpoint_name)
 
         model.to(config["device"])
         model.eval()
@@ -190,16 +190,18 @@ class peft_training_pipeline:
 
 
     def run(self):
-        self.hf_login()
+        # self.hf_login()
 
         for config in self.configs:
-            peft_config = PromptTuningConfig(task_type=PEFT_TASK_MAPPING[config["task_type"]], num_virtual_tokens=config["num_virtual_tokens"], tokenizer_name_or_path=config["tokenizer_name_or_path"])
+            peft_config = PromptTuningConfig(task_type=config["task_type"], num_virtual_tokens=config["num_virtual_tokens"])
+            # peft_config = PromptTuningConfig(task_type=TaskType.SEQ_2_SEQ_LM, num_virtual_tokens=config["num_virtual_tokens"])
 
             for nr in range(config["n_runs"]):
                 model = AutoModelForSeq2SeqLM.from_pretrained(config["model_name_or_path"]) # this can be either put into config or automated
                 model = get_peft_model(model, peft_config)
                 model.print_trainable_parameters()
                 model.to(config["device"])
+                timestamp = datetime.now().strftime("%m%d%Y%H%M%S")
 
                 self.metric_fs = self.create_metric_fs(config)
 
@@ -213,7 +215,7 @@ class peft_training_pipeline:
 
                 wandb_run = None
                 if self.use_wandb:
-                    wandb_run = self.init_wandb(config, nr)
+                    wandb_run = self.init_wandb(config, timestamp, nr)
 
                 min_eval_loss = np.inf
                 for epoch in range(config["num_epochs"]):
@@ -223,18 +225,18 @@ class peft_training_pipeline:
                     if metrics["valid_loss"] < min_eval_loss:
                         min_eval_loss = metrics["valid_loss"]
 
-                        checkpoint_name = f"{config['model_name_or_path']}_{peft_config.peft_type}_{peft_config.task_type}_run-{nr+1}"
-                        model.save_pretrained(checkpoint_name, from_pt=True)
-                        self.push_to_hf(model, checkpoint_name)
+                        checkpoint_name = f"{config['model_name_or_path']}_{peft_config.peft_type}_{peft_config.task_type}_{timestamp}_run-{nr+1}"
+                        model.save_pretrained(checkpoint_name)
+                        # self.push_to_hf(model, checkpoint_name)
                         
-                        artifact = wandb.Artifact(name=f"{config['model_name_or_path']}_{peft_config.peft_type}_{peft_config.task_type}_run-{nr+1}", type="weights")
+                        artifact = wandb.Artifact(name=f"{config['model_name_or_path']}_{peft_config.peft_type}_{peft_config.task_type}_{timestamp}_run-{nr+1}", type="weights")
                         artifact.add_dir(local_path=checkpoint_name)
                         wandb_run.log_artifact(artifact)
 
                     wandb.log(metrics)
                     print(f"{epoch=},",metrics)
 
-                test_metrics = self.test(model, config, test_dataloader, checkpoint_name)
+                test_metrics = self.test(config, test_dataloader, checkpoint_name, tokenizer)
                 wandb.log(test_metrics)
                 print(test_metrics)
 

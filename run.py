@@ -1,9 +1,10 @@
 from pipelines import peft_training_pipeline
 import tomllib
 
+import os
 
 data = None
-with open("config.toml", "rb") as f:
+with open(os.path.join(os.path.dirname(__file__), "config.toml"), "rb") as f:
     data = tomllib.load(f)
 
 tp = peft_training_pipeline(configs=data["configs"])
