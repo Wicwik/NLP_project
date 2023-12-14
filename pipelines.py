@@ -54,7 +54,7 @@ class peft_training_pipeline:
         # at first, focus just on t5 would be enough, after that we can go wild
         dataset = AutoTask.get(config['datasets'][0], config).get(split=None)
 
-        max_target_length = AutoTask.get(config['datasets'][0], config).get_max_target_length(tokenizer, None)
+        max_target_length = AutoTask.get(config['datasets'][0], config).get_max_target_length(tokenizer, default_max_length=config["max_target_length"])
         dataset = dataset.map(functools.partial(self.preprocess_function, config=config, tokenizer=tokenizer, max_target_length=max_target_length), load_from_cache_file=False, desc="Running preprocess_function on dataset")
         dataset = dataset.remove_columns(["source", "target", "extra_fields", "task"])
 

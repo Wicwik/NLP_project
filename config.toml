@@ -5,15 +5,15 @@ device = "cuda"
 learning_rate = 0.01
 model_name_or_path = "t5-base"
 tokenizer_name_or_path = "t5-base"
-max_length = 64
+max_target_length = 128
 num_epochs = 20
 batch_size = 16
 peft_type = "prompt_tunning"
 task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
-n_runs = 10
+n_runs = 1
 wandb_project = "prompt_tunning_soft_prompt_experiments"
-max_source_length = 128
+max_source_length = 256
 
 
 [[configs]]
@@ -29,9 +29,9 @@ batch_size = 16
 peft_type = "prompt_tunning"
 task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
-n_runs = 10
+n_runs = 1
 wandb_project = "prompt_tunning_soft_prompt_experiments"
-max_source_length = 128
+max_source_length = 256
 
 [[configs]]
 datasets = ["sst2"]
@@ -46,9 +46,9 @@ batch_size = 16
 peft_type = "prompt_tunning"
 task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
-n_runs = 10
+n_runs = 1
 wandb_project = "prompt_tunning_soft_prompt_experiments"
-max_source_length = 128
+max_source_length = 256
 
 [[configs]]
 datasets = ["qnli"]
@@ -63,9 +63,9 @@ batch_size = 16
 peft_type = "prompt_tunning"
 task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
-n_runs = 10
+n_runs = 1
 wandb_project = "prompt_tunning_soft_prompt_experiments"
-max_source_length = 128
+max_source_length = 256
 
 
 [[configs]]
@@ -81,9 +81,9 @@ batch_size = 16
 peft_type = "prompt_tunning"
 task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
-n_runs = 10
+n_runs = 1
 wandb_project = "prompt_tunning_soft_prompt_experiments"
-max_source_length = 128
+max_source_length = 256
 
 [[configs]]
 datasets = ["qqp"]
@@ -98,9 +98,9 @@ batch_size = 16
 peft_type = "prompt_tunning"
 task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
-n_runs = 10
+n_runs = 1
 wandb_project = "prompt_tunning_soft_prompt_experiments"
-max_source_length = 128
+max_source_length = 256
 
 [[configs]]
 datasets = ["superglue-record"]
@@ -115,6 +115,6 @@ batch_size = 16
 peft_type = "prompt_tunning"
 task_type = "seq_2_seq_lm"
 num_virtual_tokens = 100
-n_runs = 10
+n_runs = 1
 wandb_project = "prompt_tunning_soft_prompt_experiments"
-max_source_length = 128
+max_source_length = 256
