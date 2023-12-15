@@ -32,12 +32,7 @@ class peft_training_pipeline:
         return wandb.init(project=config["wandb_project"], config=config, name=f"{config['model_name_or_path']}_{config['peft_type']}_{config['task_type']}_{'_'.join(config['datasets'])}_{timestamp}_run-{nr+1}")
 
     def preprocess_function(self, examples, config, tokenizer, max_target_length):
-        inputs = tokenizer(examples["source"], max_length=config["max_source_length"], padding=False, truncation=True)
-
-        with tokenizer.as_target_tokenizer():
-            labels = tokenizer(examples['target'], max_length=max_target_length, padding=False, truncation=True)
-
-        inputs["labels"] = labels["input_ids"]
+        inputs = tokenizer(examples["source"], text_target=examples['target'], max_length=config["max_source_length"], padding=False, truncation=True)
         inputs["extra_fields"] = examples['extra_fields']
 
         return inputs
