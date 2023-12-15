@@ -27,15 +27,15 @@ class AbstractTask:
     labels_list = None
     split_map = None
 
-    
     def __init__(self, config, seed=256):
         self.dataset_config_name = config["dataset_config_name"][0]
         self.config = config
         self.seed = seed
         self.formater = AutoType.get(self.config["task_type"]).formater
 
-    def postprocessor(self, preds, labels, tokenizer, ignore_pad_token_for_loss, info=None):
-
+    def postprocessor(
+        self, preds, labels, tokenizer, ignore_pad_token_for_loss, info=None
+    ):
         decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
         if ignore_pad_token_for_loss:
             labels = np.where(labels != -100, labels, tokenizer.pad_token_id)
@@ -44,7 +44,7 @@ class AbstractTask:
 
         decoded_preds = [pred.strip() for pred in decoded_preds]
         decoded_labels = [label.strip() for label in decoded_labels]
-        
+
         return decoded_preds, decoded_labels
 
     # get maximum token lenght from labels
@@ -54,16 +54,32 @@ class AbstractTask:
         return default_max_length
 
     def map_dataset(self, dataset, add_prefix):
-        return dataset.map(functools.partial(self.preprocessor, add_prefix=add_prefix), remove_columns=dataset["train"].column_names, load_from_cache_file=False, desc=f"Running {self.name}_preprocessor on dataset")
+        return dataset.map(
+            functools.partial(self.preprocessor, add_prefix=add_prefix),
+            remove_columns=dataset["train"].column_names,
+            load_from_cache_file=False,
+            desc=f"Running {self.name}_preprocessor on dataset",
+        )
 
     def load_dataset(self, split: int):
-        return datasets.load_dataset(self.name, self.dataset_config_name, split=split, script_version="master")
-    
-    def get(self, split, add_prefix=True, n_obs=None, split_validation_test=False, lang=None, file_name=None):
+        return datasets.load_dataset(
+            self.name, self.dataset_config_name, split=split, script_version="master"
+        )
+
+    def get(
+        self,
+        split,
+        add_prefix=True,
+        n_obs=None,
+        split_validation_test=False,
+        lang=None,
+        file_name=None,
+    ):
         # TODO implemet splits
         dataset = self.load_dataset(split=split)
 
         return self.map_dataset(dataset, add_prefix)
+
 
 class Squad(AbstractTask):
     name = "squad"
@@ -72,32 +88,44 @@ class Squad(AbstractTask):
 
     def load_dataset(self, split):
         return datasets.load_dataset(self.name, split=split)
-    
+
     def preprocessor(self, example, add_prefix):
         answer = pad_punctuation(example["answers"]).split("\t")
         question = pad_punctuation(example["question"])
         context = pad_punctuation(example["context"])
 
-        input_texts = ["question:", question,"context:", context]
+        input_texts = ["question:", question, "context:", context]
         label_texts = [answer] if type(answer) == str else answer
 
         return self.formater(self.name, input_texts, label_texts, add_prefix)
+
 
 class MRPC(AbstractTask):
     name = "mrpc"
     labels_list = ["0", "1"]
     metrics = [Accuraccy, F1ScoreWithInvalid]
     metric_names = ["accuracy", "f1"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation",
+        "test": "validation",
+    }
 
     def load_dataset(self, split):
         return datasets.load_dataset("glue", self.name, split=split)
-    
+
     def preprocessor(self, example, add_prefix=True):
-        input_texts = ["sentence1:", example['sentence1'], "sentence2:", example["sentence2"]]
+        input_texts = [
+            "sentence1:",
+            example["sentence1"],
+            "sentence2:",
+            example["sentence2"],
+        ]
         label_texts = [str(example["label"])]
 
         return self.formater(self.name, input_texts, label_texts, add_prefix)
-    
+
+
 class SST2(AbstractTask):
     name = "sst2"
     labels_list = ["0", "1"]
@@ -106,12 +134,13 @@ class SST2(AbstractTask):
 
     def load_dataset(self, split):
         return datasets.load_dataset("glue", self.name, split=split)
-    
+
     def preprocessor(self, example, add_prefix=True):
         input_texts = ["sentence", example["sentence"]]
         label_texts = [str(example["label"])]
 
         return self.formater(self.name, input_texts, label_texts, add_prefix)
+
 
 class QNLI(AbstractTask):
     name = "qnli"
@@ -121,13 +150,19 @@ class QNLI(AbstractTask):
 
     def load_dataset(self, split):
         return datasets.load_dataset("glue", self.name, split=split)
-    
+
     def preprocessor(self, example, add_prefix=True):
-        input_texts = ["question:", example["question"], "sentence:", example["sentence"]]
+        input_texts = [
+            "question:",
+            example["question"],
+            "sentence:",
+            example["sentence"],
+        ]
         label_texts = [str(example["label"])]
 
         return self.formater(self.name, input_texts, label_texts, add_prefix)
-    
+
+
 class MNLI(AbstractTask):
     name = "mnli"
     labels_list = ["0", "1", "2"]
@@ -136,13 +171,19 @@ class MNLI(AbstractTask):
 
     def load_dataset(self, split):
         return datasets.load_dataset("glue", self.name, split=split)
-    
+
     def preprocessor(self, example, add_prefix=True):
-        input_texts = ["premise:", example["premise"], "hypothesis:", example["hypothesis"]]
+        input_texts = [
+            "premise:",
+            example["premise"],
+            "hypothesis:",
+            example["hypothesis"],
+        ]
         label_texts = [str(example["label"])]
 
         return self.formater(self.name, input_texts, label_texts, add_prefix)
-    
+
+
 class QQP(AbstractTask):
     name = "qqp"
     labels_list = ["0", "1"]
@@ -151,13 +192,19 @@ class QQP(AbstractTask):
 
     def load_dataset(self, split):
         return datasets.load_dataset("glue", self.name, split=split)
-    
+
     def preprocessor(self, example, add_prefix=True):
-        input_texts = ["question1:", example["question1"], "question2:", example["question2"]]
+        input_texts = [
+            "question1:",
+            example["question1"],
+            "question2:",
+            example["question2"],
+        ]
         label_texts = [str(example["label"])]
 
         return self.formater(self.name, input_texts, label_texts, add_prefix)
-    
+
+
 class SuperGLUERecord(AbstractTask):
     name = "superglue-record"
     metrics = [SquadMetric]
@@ -165,7 +212,7 @@ class SuperGLUERecord(AbstractTask):
 
     def load_dataset(self, split):
         return datasets.load_dataset("super_glue", self.name, split=split)
-    
+
     def preprocessor(self, batch, add_prefix=True):
         new_batch = collections.defaultdict(list)
         keys = batch.keys()
@@ -173,8 +220,8 @@ class SuperGLUERecord(AbstractTask):
             ex = {k: v for k, v in zip(keys, values)}
             # updates the passage.
             passage = ex["passage"]
-            passage = re.sub(r'(\.|\?|\!|\"|\')\n@highlight\n', r'\1 ', passage)
-            passage = re.sub(r'\n@highlight\n', '. ', passage)
+            passage = re.sub(r"(\.|\?|\!|\"|\')\n@highlight\n", r"\1 ", passage)
+            passage = re.sub(r"\n@highlight\n", ". ", passage)
             inputs = f"record query: {ex['query']} entities: {', '.join(ex['entities'])} passage: {passage}"
             if add_prefix:
                 inputs = self.name + " " + inputs
@@ -185,12 +232,19 @@ class SuperGLUERecord(AbstractTask):
             new_batch["source"].extend([inputs] * num_duplicates)
             new_batch["target"].extend(ex["answers"] if num_answers > 0 else ["<unk>"])
             new_batch["task"].extend([self.name] * num_duplicates)
-            new_batch["extra_fields"].extend([{"answers": ex["answers"]}]*num_duplicates)
-        
+            new_batch["extra_fields"].extend(
+                [{"answers": ex["answers"]}] * num_duplicates
+            )
+
         return new_batch
-    
+
     def map_dataset(self, dataset, add_prefix=True):
-        return dataset.map(functools.partial(self.preprocessor, add_prefix=add_prefix), batched=True, remove_columns=dataset.column_names)
+        return dataset.map(
+            functools.partial(self.preprocessor, add_prefix=add_prefix),
+            batched=True,
+            remove_columns=dataset.column_names,
+        )
+
 
 TASK_MAPPING = OrderedDict(
     [
@@ -202,8 +256,8 @@ TASK_MAPPING = OrderedDict(
         ("qnli", QNLI),
         # ('rte', RTE),
         # ('wnli', WNLI),
-        ('mnli', MNLI),
-        ('qqp', QQP),
+        ("mnli", MNLI),
+        ("qqp", QQP),
         # ('stsb', STSB),
         # ('superglue-boolq', SuperGLUEBoolQ),
         # ('superglue-rte', SuperGLUERTE),
@@ -212,7 +266,7 @@ TASK_MAPPING = OrderedDict(
         # ('superglue-multirc', SuperGLUEMultiRC),
         # ('superglue-wic', SuperGLUEWIC),
         # ('superglue-wsc.fixed', SuperGLUEWSCFixed),
-        ('superglue-record', SuperGLUERecord),
+        ("superglue-record", SuperGLUERecord),
         # ('multi_nli', MultiNLI),
         # ('snli', SNLI),
         # ('piqa', PIQA),
@@ -232,12 +286,13 @@ TASK_MAPPING = OrderedDict(
     ]
 )
 
+
 class AutoTask:
     @classmethod
     def get(self, task, config, seed=256):
         if task in TASK_MAPPING:
             return TASK_MAPPING[task](config, seed)
-        
+
         raise ValueError(
             "Unrecognized task {} for AutoTask Model: {}.\n"
             "Task name should be one of {}.".format(

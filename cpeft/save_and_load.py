@@ -5,7 +5,8 @@ from typing import Optional
 
 from .utils import infer_device
 
-def get_peft_model_state_dict(model, state_dict = None, adapter_name = "peft"):
+
+def get_peft_model_state_dict(model, state_dict=None, adapter_name="peft"):
     # state dict not used yet, but may be used when we would like to save additional peft layers
     # fro promtp tuning we save only the prompt embedding weights
     config = model.peft_config[adapter_name]
@@ -21,7 +22,7 @@ def get_peft_model_state_dict(model, state_dict = None, adapter_name = "peft"):
     return to_return
 
 
-def set_peft_model_state_dict(model, peft_state_dict, adapter_name = "peft"):
+def set_peft_model_state_dict(model, peft_state_dict, adapter_name="peft"):
     config = model.peft_config[adapter_name]
     state_dict = peft_state_dict
 
@@ -29,9 +30,12 @@ def set_peft_model_state_dict(model, peft_state_dict, adapter_name = "peft"):
 
     load_result = model.load_state_dict(peft_model_state_dict, strict=False)
     if config.is_prompt_learning:
-        model.prompt_encoder[adapter_name].embedding.load_state_dict({"weight": peft_model_state_dict["prompt_embeddings"]}, strict=True)
-    
+        model.prompt_encoder[adapter_name].embedding.load_state_dict(
+            {"weight": peft_model_state_dict["prompt_embeddings"]}, strict=True
+        )
+
     return load_result
+
 
 def load_peft_weights(model_id: str, device: Optional[str] = None):
     path = model_id
@@ -43,4 +47,3 @@ def load_peft_weights(model_id: str, device: Optional[str] = None):
     adapters_weights = torch.load(filename, map_location=torch.device(device))
 
     return adapters_weights
-

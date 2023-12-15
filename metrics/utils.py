@@ -23,11 +23,11 @@ import string
 import collections
 import numpy as np
 
+
 def _f1_score(target, prediction):
     prediction_tokens = prediction.split()
     target_tokens = target.split()
-    common = (collections.Counter(prediction_tokens) &
-              collections.Counter(target_tokens))
+    common = collections.Counter(prediction_tokens) & collections.Counter(target_tokens)
     num_same = sum(common.values())
     if num_same == 0:
         return 0
@@ -36,13 +36,14 @@ def _f1_score(target, prediction):
     f1 = (2 * precision * recall) / (precision + recall)
     return f1
 
+
 def _exact_match_score(target, prediction):
     return target == prediction
 
+
 def _metric_max_over_ground_truths(metric_fn, ground_truths, prediction):
-    return max(
-        metric_fn(ground_truth, prediction) for ground_truth in ground_truths
-    )
+    return max(metric_fn(ground_truth, prediction) for ground_truth in ground_truths)
+
 
 def _normalize_answer(text, punc_chars, punc_repl):
     def remove_articles(s):
@@ -61,6 +62,7 @@ def _normalize_answer(text, punc_chars, punc_repl):
     text = white_space_fix(text)
     return text
 
+
 def normalize_squad(answer):
     return _normalize_answer(answer, punc_chars=string.punctuation, punc_repl="")
 
@@ -68,14 +70,18 @@ def normalize_squad(answer):
 def qa_metrics(targets, predictions):
     if len(targets) != len(predictions):
         raise ValueError("Number of targets and predictions must match.")
-    em = np.mean([
-        _metric_max_over_ground_truths(_exact_match_score, t, p)
-        for p, t in zip(predictions, targets)
-    ])
-    f1 = np.mean([
-        _metric_max_over_ground_truths(_f1_score, t, p)
-        for p, t in zip(predictions, targets)
-    ])
+    em = np.mean(
+        [
+            _metric_max_over_ground_truths(_exact_match_score, t, p)
+            for p, t in zip(predictions, targets)
+        ]
+    )
+    f1 = np.mean(
+        [
+            _metric_max_over_ground_truths(_f1_score, t, p)
+            for p, t in zip(predictions, targets)
+        ]
+    )
     em *= 100
     f1 *= 100
     return {"em": em, "f1": f1}

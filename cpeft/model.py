@@ -8,10 +8,20 @@ from typing import Dict, Any, List, Optional
 from copy import deepcopy
 
 from .utils import _prepare_prompt_learning_config, infer_device, _get_batch_size
-from .save_and_load import get_peft_model_state_dict, set_peft_model_state_dict, load_peft_weights
+from .save_and_load import (
+    get_peft_model_state_dict,
+    set_peft_model_state_dict,
+    load_peft_weights,
+)
+
 
 class PeftModel(PushToHubMixin, torch.nn.Module):
-    def __init__(self, model: PreTrainedModel, peft_config: PeftConfig, adapter_name: str = "peft"):
+    def __init__(
+        self,
+        model: PreTrainedModel,
+        peft_config: PeftConfig,
+        adapter_name: str = "peft",
+    ):
         super().__init__()
         self.base_model = model
         self.device = self.base_model.device
@@ -23,10 +33,17 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
         self.config = getattr(self.base_model, "config", {"model_type": "custom"})
         self.add_adapter(adapter_name, peft_config)
 
-        if hasattr(self.base_model, "config") and hasattr(self.base_model.config, "pretraining_tp"):
+        if hasattr(self.base_model, "config") and hasattr(
+            self.base_model.config, "pretraining_tp"
+        ):
             self.base_model.config.pretraining_tp = 1
 
-    def save_pretrained(self, save_directory: str, selected_adapters: Optional[List[str]] = None, **kwargs: Any):
+    def save_pretrained(
+        self,
+        save_directory: str,
+        selected_adapters: Optional[List[str]] = None,
+        **kwargs: Any,
+    ):
         if os.path.isfile(save_directory):
             raise ValueError(f"{save_directory} is not a directory.")
 
@@ -37,8 +54,16 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
         for adapter_name in selected_adapters:
             peft_config = self.peft_config[adapter_name]
-            output_state_dict = get_peft_model_state_dict(self, state_dict=kwargs.get("state_dict", None), adapter_name=adapter_name)
-            output_dir = os.path.join(save_directory, adapter_name) if adapter_name != "peft" else save_directory
+            output_state_dict = get_peft_model_state_dict(
+                self,
+                state_dict=kwargs.get("state_dict", None),
+                adapter_name=adapter_name,
+            )
+            output_dir = (
+                os.path.join(save_directory, adapter_name)
+                if adapter_name != "peft"
+                else save_directory
+            )
 
             os.makedirs(output_dir, exist_ok=True)
 
@@ -51,33 +76,45 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
             peft_config.inference_mode = inference_mode
 
     @classmethod
-    def from_pretrained(cls, model: PreTrainedModel, model_id: str, adapter_name: str = "peft", is_trainable: bool = False, config: Optional[PeftConfig] = None, **kwargs: Any):
+    def from_pretrained(
+        cls,
+        model: PreTrainedModel,
+        model_id: str,
+        adapter_name: str = "peft",
+        is_trainable: bool = False,
+        config: Optional[PeftConfig] = None,
+        **kwargs: Any,
+    ):
         if config is None:
             model_path = model_id
 
             if adapter_name != "peft":
                 model_path = os.path.join(model_id, adapter_name)
-            
+
             config = PromptTuningConfig.from_pretrained(model_path, **kwargs)
 
         if config.is_prompt_learning and is_trainable:
-            raise ValueError("Cannot set a prompt learning adapter to trainable when loading pretrained adapter.")
+            raise ValueError(
+                "Cannot set a prompt learning adapter to trainable when loading pretrained adapter."
+            )
         else:
             config.inference_mode = not is_trainable
 
         model = PeftModelForSeq2SeqLM(model, config, adapter_name)
-        model.load_adapter(model_path, adapter_name, is_trainable=is_trainable, **kwargs)
+        model.load_adapter(
+            model_path, adapter_name, is_trainable=is_trainable, **kwargs
+        )
 
         return model
 
     @property
     def peft_config(self) -> Dict[str, str]:
         return self._peft_config
-    
+
     @property
     def active_peft_config(self):
         return self.peft_config[self.active_adapter]
-    
+
     @peft_config.setter
     def peft_config(self, value: Dict[str, str]):
         self.peft_config = value
@@ -119,28 +156,46 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
             peft_config = _prepare_prompt_learning_config(peft_config, dict_config)
             self._setup_prompt_encoder(adapter_name)
 
-    def load_adapter(self, model_id: str, adapter_name: str, is_trainable: bool = False, **kwargs: Any):
+    def load_adapter(
+        self,
+        model_id: str,
+        adapter_name: str,
+        is_trainable: bool = False,
+        **kwargs: Any,
+    ):
         torch_device = infer_device()
 
         adapters_weights = load_peft_weights(model_id, device=torch_device, **kwargs)
 
-        load_result = set_peft_model_state_dict(self, adapters_weights, adapter_name=adapter_name)
+        load_result = set_peft_model_state_dict(
+            self, adapters_weights, adapter_name=adapter_name
+        )
 
         if not is_trainable:
             self.eval()
 
         return load_result
-    
+
     def get_prompt_embedding_to_save(self, adapter_name: str):
         prompt_encoder = self.prompt_encoder[adapter_name]
-        prompt_tokens = (self.prompt_tokens[adapter_name].unsqueeze(0).expand(1, -1).to(prompt_encoder.embedding.weight.device))
+        prompt_tokens = (
+            self.prompt_tokens[adapter_name]
+            .unsqueeze(0)
+            .expand(1, -1)
+            .to(prompt_encoder.embedding.weight.device)
+        )
         prompt_embeddings = prompt_encoder(prompt_tokens)
         return prompt_embeddings[0].detach().cpu()
-    
+
     def get_prompt(self, batch_size: int):
         peft_config = self.active_peft_config
         prompt_encoder = self.prompt_encoder[self.active_adapter]
-        prompt_tokens = (self.prompt_tokens[self.active_adapter].unsqueeze(0).expand(batch_size, -1).to(prompt_encoder.embedding.weight.device))
+        prompt_tokens = (
+            self.prompt_tokens[self.active_adapter]
+            .unsqueeze(0)
+            .expand(batch_size, -1)
+            .to(prompt_encoder.embedding.weight.device)
+        )
 
         if peft_config.inference_mode:
             prompts = prompt_encoder.embedding.weight.repeat(batch_size, 1, 1)
@@ -148,7 +203,6 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
             prompts = prompt_encoder(prompt_tokens)
 
         return prompts
-        
 
     def _setup_prompt_encoder(self, adapter_name):
         config = self.peft_config[adapter_name]
@@ -175,11 +229,15 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
         # set the number of modules
         if config.num_transformer_submodules is None:
-            config.num_transformer_submodules = 2 if config.task_type == "seq_2_seq_lm" else 1
+            config.num_transformer_submodules = (
+                2 if config.task_type == "seq_2_seq_lm" else 1
+            )
 
         for named_param, value in list(transformer_backbone.named_parameters()):
             if value.shape[0] == self.base_model.config.vocab_size:
-                self.word_embeddings = transformer_backbone.get_submodule(named_param.replace(".weight", ""))
+                self.word_embeddings = transformer_backbone.get_submodule(
+                    named_param.replace(".weight", "")
+                )
                 break
 
         if config.peft_type == "prompt_tuning":
@@ -187,7 +245,9 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
         prompt_encoder = prompt_encoder.to(self.device)
         self.prompt_encoder.update(torch.nn.ModuleDict({adapter_name: prompt_encoder}))
-        self.prompt_tokens[adapter_name] = torch.arange(config.num_virtual_tokens * config.num_transformer_submodules).long()
+        self.prompt_tokens[adapter_name] = torch.arange(
+            config.num_virtual_tokens * config.num_transformer_submodules
+        ).long()
 
     def __getattr__(self, name: str):
         try:
@@ -198,21 +258,48 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
     def forward(self, *args: Any, **kwargs: Any):
         return self.get_base_model()(*args, **kwargs)
 
+
 class PeftModelForSeq2SeqLM(PeftModel):
-    def __init__(self, model: PreTrainedModel, peft_config: PeftConfig, adapter_name: str = "seq2seq_peft"):
+    def __init__(
+        self,
+        model: PreTrainedModel,
+        peft_config: PeftConfig,
+        adapter_name: str = "seq2seq_peft",
+    ):
         super().__init__(model, peft_config, adapter_name)
 
-        self.base_model_prepare_inputs_for_generation = self.base_model.prepare_inputs_for_generation
-        self.base_model_prepare_encoder_decoder_kwargs_for_generation = (self.base_model._prepare_encoder_decoder_kwargs_for_generation)
+        self.base_model_prepare_inputs_for_generation = (
+            self.base_model.prepare_inputs_for_generation
+        )
+        self.base_model_prepare_encoder_decoder_kwargs_for_generation = (
+            self.base_model._prepare_encoder_decoder_kwargs_for_generation
+        )
 
-    def forward(self, input_ids=None, attention_mask=None, inputs_embeds=None, decoder_input_ids=None, decoder_attention_mask=None, decoder_inputs_embeds=None, labels=None, output_attentions=None, output_hidden_states=None, return_dict=None, **kwargs):
+    def forward(
+        self,
+        input_ids=None,
+        attention_mask=None,
+        inputs_embeds=None,
+        decoder_input_ids=None,
+        decoder_attention_mask=None,
+        decoder_inputs_embeds=None,
+        labels=None,
+        output_attentions=None,
+        output_hidden_states=None,
+        return_dict=None,
+        **kwargs,
+    ):
         peft_config = self.active_peft_config
 
         batch_size = _get_batch_size(input_ids, inputs_embeds)
 
         if decoder_attention_mask is not None:
-            prefix_attention_mask = torch.ones(batch_size, peft_config.num_virtual_tokens).to(decoder_attention_mask.device)
-            decoder_attention_mask = torch.cat((prefix_attention_mask, decoder_attention_mask), dim=1)
+            prefix_attention_mask = torch.ones(
+                batch_size, peft_config.num_virtual_tokens
+            ).to(decoder_attention_mask.device)
+            decoder_attention_mask = torch.cat(
+                (prefix_attention_mask, decoder_attention_mask), dim=1
+            )
 
         kwargs.update(
             {
@@ -229,19 +316,34 @@ class PeftModelForSeq2SeqLM(PeftModel):
             inputs_embeds = self.word_embeddings(input_ids)
 
         if attention_mask is not None:
-            prefix_attention_mask = torch.ones(batch_size, peft_config.num_virtual_tokens).to(attention_mask.device)
-            kwargs["attention_mask"] = torch.cat((prefix_attention_mask, attention_mask), dim=1)
+            prefix_attention_mask = torch.ones(
+                batch_size, peft_config.num_virtual_tokens
+            ).to(attention_mask.device)
+            kwargs["attention_mask"] = torch.cat(
+                (prefix_attention_mask, attention_mask), dim=1
+            )
 
         prompts = self.get_prompt(batch_size=batch_size)
         prompts = prompts.to(inputs_embeds.dtype)
-        inputs_embeds = torch.cat((prompts[:, : peft_config.num_virtual_tokens], inputs_embeds), dim=1)
+        inputs_embeds = torch.cat(
+            (prompts[:, : peft_config.num_virtual_tokens], inputs_embeds), dim=1
+        )
 
-        return self.base_model(inputs_embeds=inputs_embeds, decoder_input_ids=decoder_input_ids, decoder_inputs_embeds=decoder_inputs_embeds, **kwargs)
-    
+        return self.base_model(
+            inputs_embeds=inputs_embeds,
+            decoder_input_ids=decoder_input_ids,
+            decoder_inputs_embeds=decoder_inputs_embeds,
+            **kwargs,
+        )
+
     def generate(self, **kwargs):
         peft_config = self.active_peft_config
-        self.base_model.prepare_inputs_for_generation = self.prepare_inputs_for_generation
-        self.base_model._prepare_encoder_decoder_kwargs_for_generation = (self._prepare_encoder_decoder_kwargs_for_generation)
+        self.base_model.prepare_inputs_for_generation = (
+            self.prepare_inputs_for_generation
+        )
+        self.base_model._prepare_encoder_decoder_kwargs_for_generation = (
+            self._prepare_encoder_decoder_kwargs_for_generation
+        )
 
         kwargs = deepcopy(kwargs)
 
@@ -251,13 +353,17 @@ class PeftModelForSeq2SeqLM(PeftModel):
         prompts = self.get_prompt(batch_size=batch_size)
         prompts = prompts.to(inputs_embeds.dtype)
 
-        inputs_embeds = torch.cat((prompts[:, : peft_config.num_virtual_tokens], inputs_embeds), dim=1)
+        inputs_embeds = torch.cat(
+            (prompts[:, : peft_config.num_virtual_tokens], inputs_embeds), dim=1
+        )
         kwargs["inputs_embeds"] = inputs_embeds
 
         if "attention_mask" in kwargs:
-            prefix_attention_mask = torch.ones(batch_size, peft_config.num_virtual_tokens).to(
-                kwargs["attention_mask"].device
+            prefix_attention_mask = torch.ones(
+                batch_size, peft_config.num_virtual_tokens
+            ).to(kwargs["attention_mask"].device)
+            kwargs["attention_mask"] = torch.cat(
+                (prefix_attention_mask, kwargs["attention_mask"]), dim=1
             )
-            kwargs["attention_mask"] = torch.cat((prefix_attention_mask, kwargs["attention_mask"]), dim=1)
 
         return self.base_model.generate(**kwargs)

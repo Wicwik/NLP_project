@@ -25,7 +25,7 @@ tp.run()
 #     print(score(p, l))
 #     print(acc(p, l))
 #     print(f1_score_with_invalid(p,l))
-    
+
 
 # print(score.compute())
 # print(acc.compute())
