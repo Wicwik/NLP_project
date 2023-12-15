@@ -1,4 +1,5 @@
 # TODO fix autotask so that AutoTask.get() does not require config as parameter
+# TODO investigate why are labels for squad validation set duplicated
 
 import torch
 import wandb
@@ -59,12 +60,15 @@ class peft_training_pipeline:
         dataset = AutoTask.get(config["datasets"][0], config).get(split=None)
 
         train_dataset = AutoTask.get(config["datasets"][0], config).get(split="train", split_validation_test=config["split_validation_test"], add_prefix=True, n_obs=None)
+        valid_dataset = AutoTask.get(config["datasets"][0], config).get(split="validation", split_validation_test=config["split_validation_test"], add_prefix=True, n_obs=None)
+        test_dataset = AutoTask.get(config["datasets"][0], config).get(split="test", split_validation_test=config["split_validation_test"], add_prefix=True, n_obs=None)
 
         max_target_length = AutoTask.get(
             config["datasets"][0], config
         ).get_max_target_length(
             tokenizer, default_max_length=config["max_target_length"]
         )
+        
         dataset = dataset.map(
             functools.partial(
                 self.preprocess_function,
@@ -72,6 +76,7 @@ class peft_training_pipeline:
                 tokenizer=tokenizer,
                 max_target_length=max_target_length,
             ),
+            batched=True,
             load_from_cache_file=False,
             desc="Running preprocess_function on dataset",
         )
