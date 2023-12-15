@@ -58,6 +58,8 @@ class peft_training_pipeline:
         # at first, focus just on t5 would be enough, after that we can go wild
         dataset = AutoTask.get(config["datasets"][0], config).get(split=None)
 
+        train_dataset = AutoTask.get(config["datasets"][0], config).get(split="train", split_validation_test=config["split_validation_test"], add_prefix=True, n_obs=None)
+
         max_target_length = AutoTask.get(
             config["datasets"][0], config
         ).get_max_target_length(

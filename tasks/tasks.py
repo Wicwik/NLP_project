@@ -4,12 +4,13 @@ import functools
 import datasets
 import numpy as np
 import regex as re
-import collections
-
+import torch
 
 from .type import AutoType
 
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
+from typing import Mapping
+
 from metrics import F1ScoreWithInvalid, Accuraccy, SquadMetric
 
 from utils import pad_punctuation
@@ -26,8 +27,46 @@ class AbstractTask:
     seed = NotImplemented
     labels_list = None
     split_map = None
+    split_to_data_split: Mapping[str, str] = {
+        "train": "train",
+        "validation": "validation",
+        "test": "test",
+    }
+    mall_datasets_without_all_splits = [
+        "cola",
+        "wnli",
+        "rte",
+        "superglue-cb",
+        "superglue-copa",
+        "superglue-multirc",
+        "superglue-wic",
+        "superglue-wsc.fixed",
+        "superglue-rte",
+        "mrpc",
+        "stsb",
+        "superglue-boolq",
+        "xsum",
+        "scitail",
+    ]
+    large_data_without_all_splits = [
+        "qqp",
+        "qnli",
+        "superglue-record",
+        "sst2",
+        "squad",
+        "snli",
+        "anli",
+        "amazon_polarity",
+        "yelp_polarity",
+        "winogrande",
+        "newsqa",
+        "searchqa",
+        "triviaqa",
+        "nq",
+        "hotpotqa",
+    ]
 
-    def __init__(self, config, seed=256):
+    def __init__(self, config, seed=42):
         self.dataset_config_name = config["dataset_config_name"][0]
         self.config = config
         self.seed = seed
@@ -53,6 +92,32 @@ class AbstractTask:
             return max([len(tokenizer.encode(label)) for label in self.labels_list])
         return default_max_length
 
+    def check_n_obs(self, n_obs, total_size):
+        if n_obs is not None and n_obs > total_size:
+            n_obs = total_size
+        return n_obs
+
+    def shuffled_indices(self, dataset):
+        num_samples = len(dataset)
+        generator = torch.Generator()
+        generator.manual_seed(self.seed)
+        return torch.randperm(num_samples, generator=generator).tolist()
+
+    def subsample(self, dataset, n_obs=None, indices=None):
+        num_samples = len(dataset)
+        n_obs = self.check_n_obs(n_obs, num_samples)
+        if indices is None:
+            indices = self.shuffled_indices(dataset)
+        indices = indices[:n_obs]
+        return dataset.select(indices)
+
+    def get_split_indices(self, split, dataset, validation_size):
+        indices = self.shuffled_indices(dataset)
+        if split == "validation":
+            return indices[:validation_size]
+        else:
+            return indices[validation_size:]
+
     def map_dataset(self, dataset, add_prefix):
         return dataset.map(
             functools.partial(self.preprocessor, add_prefix=add_prefix),
@@ -66,17 +131,35 @@ class AbstractTask:
             self.name, self.dataset_config_name, split=split, script_version="master"
         )
 
-    def get(
-        self,
-        split,
-        add_prefix=True,
-        n_obs=None,
-        split_validation_test=False,
-        lang=None,
-        file_name=None,
-    ):
-        # TODO implemet splits
-        dataset = self.load_dataset(split=split)
+    def get(self, split, add_prefix=True, n_obs=None, split_validation_test=False):
+        # to better uderstand this please see comments provided by authors https://github.com/AkariAsai/ATTEMPT/blob/main/attempt/data/tasks.py#L98
+        if (
+            split_validation_test
+            and self.name in self.small_datasets_without_all_splits
+            and split != "train"
+        ):
+            mapped_split = self.split_to_data_split["validation"]
+            dataset = self.load_dataset(split=mapped_split)
+            indices = self.get_split_indices(
+                split, dataset, validation_size=len(dataset) // 2
+            )
+            dataset = self.subsample(dataset, n_obs, indices)
+
+        elif (
+            split_validation_test
+            and self.name in self.large_data_without_all_splits
+            and split != "test"
+        ):
+            dataset = self.load_dataset(split="train")
+            indices = self.get_split_indices(split, dataset, validation_size=1000)
+            dataset = self.subsample(dataset, n_obs, indices)
+
+        else:
+            mapped_split = self.split_to_data_split[split]
+            dataset = self.load_dataset(split=mapped_split)
+
+            if n_obs is not None:
+                dataset = self.subsample(dataset, n_obs)
 
         return self.map_dataset(dataset, add_prefix)
 
@@ -131,6 +214,11 @@ class SST2(AbstractTask):
     labels_list = ["0", "1"]
     metrics = [Accuraccy]
     metric_names = ["accuracy"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation",
+        "test": "validation",
+    }
 
     def load_dataset(self, split):
         return datasets.load_dataset("glue", self.name, split=split)
@@ -147,6 +235,11 @@ class QNLI(AbstractTask):
     labels_list = ["0", "1"]
     metrics = [Accuraccy]
     metric_names = ["accuracy"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation",
+        "test": "validation",
+    }
 
     def load_dataset(self, split):
         return datasets.load_dataset("glue", self.name, split=split)
@@ -168,6 +261,11 @@ class MNLI(AbstractTask):
     labels_list = ["0", "1", "2"]
     metrics = [Accuraccy]
     metric_names = ["accuracy"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation_mismatched",
+        "test": "validation_matched",
+    }
 
     def load_dataset(self, split):
         return datasets.load_dataset("glue", self.name, split=split)
@@ -214,7 +312,7 @@ class SuperGLUERecord(AbstractTask):
         return datasets.load_dataset("super_glue", self.name, split=split)
 
     def preprocessor(self, batch, add_prefix=True):
-        new_batch = collections.defaultdict(list)
+        new_batch = defaultdict(list)
         keys = batch.keys()
         for values in zip(*batch.values()):
             ex = {k: v for k, v in zip(keys, values)}
@@ -289,7 +387,7 @@ TASK_MAPPING = OrderedDict(
 
 class AutoTask:
     @classmethod
-    def get(self, task, config, seed=256):
+    def get(self, task, config, seed=42):
         if task in TASK_MAPPING:
             return TASK_MAPPING[task](config, seed)
 

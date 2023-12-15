@@ -14,6 +14,7 @@ num_virtual_tokens = 100
 n_runs = 1
 wandb_project = "prompt_tunning_soft_prompt_experiments"
 max_source_length = 256
+split_validation_test = true
 
 
 [[configs]]
@@ -32,6 +33,7 @@ num_virtual_tokens = 100
 n_runs = 1
 wandb_project = "prompt_tunning_soft_prompt_experiments"
 max_source_length = 256
+split_validation_test = true
 
 [[configs]]
 datasets = ["sst2"]
@@ -49,6 +51,7 @@ num_virtual_tokens = 100
 n_runs = 1
 wandb_project = "prompt_tunning_soft_prompt_experiments"
 max_source_length = 256
+split_validation_test = true
 
 [[configs]]
 datasets = ["qnli"]
@@ -66,7 +69,7 @@ num_virtual_tokens = 100
 n_runs = 1
 wandb_project = "prompt_tunning_soft_prompt_experiments"
 max_source_length = 256
-
+split_validation_test = true
 
 [[configs]]
 datasets = ["mnli"]
@@ -84,6 +87,7 @@ num_virtual_tokens = 100
 n_runs = 1
 wandb_project = "prompt_tunning_soft_prompt_experiments"
 max_source_length = 256
+split_validation_test = true
 
 [[configs]]
 datasets = ["qqp"]
@@ -101,6 +105,7 @@ num_virtual_tokens = 100
 n_runs = 1
 wandb_project = "prompt_tunning_soft_prompt_experiments"
 max_source_length = 256
+split_validation_test = true
 
 [[configs]]
 datasets = ["superglue-record"]
@@ -118,3 +123,4 @@ num_virtual_tokens = 100
 n_runs = 1
 wandb_project = "prompt_tunning_soft_prompt_experiments"
 max_source_length = 256
+split_validation_test = true
