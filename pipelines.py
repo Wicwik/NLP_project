@@ -77,7 +77,6 @@ class peft_training_pipeline:
             ),
             batched=True,
             load_from_cache_file=False,
-            remove_columns=cols_to_remove,
             desc="Running preprocess_function on train_dataset",
         )
         train_dataset.remove_columns(cols_to_remove)
@@ -97,7 +96,6 @@ class peft_training_pipeline:
             ),
             batched=True,
             load_from_cache_file=False,
-            remove_columns=cols_to_remove,
             desc="Running preprocess_function on valid_dataset",
         )
         valid_dataset.remove_columns(cols_to_remove)
