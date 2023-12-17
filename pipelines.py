@@ -80,6 +80,7 @@ class peft_training_pipeline:
             remove_columns=cols_to_remove,
             desc="Running preprocess_function on train_dataset",
         )
+        train_dataset.remove_columns(cols_to_remove)
 
         valid_dataset = AutoTask.get(config["datasets"][0], config).get(
             split="validation",
@@ -99,6 +100,7 @@ class peft_training_pipeline:
             remove_columns=cols_to_remove,
             desc="Running preprocess_function on valid_dataset",
         )
+        valid_dataset.remove_columns(cols_to_remove)
 
         test_dataset = AutoTask.get(config["datasets"][0], config).get(
             split="test",
@@ -115,9 +117,9 @@ class peft_training_pipeline:
             ),
             batched=True,
             load_from_cache_file=False,
-            remove_columns=cols_to_remove,
             desc="Running preprocess_function on test_dataset",
         )
+        test_dataset.remove_columns(cols_to_remove)
 
         data_collator = DataCollatorForSeq2Seq(tokenizer)
 
