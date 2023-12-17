@@ -26,7 +26,6 @@ class AbstractTask:
     dataset_config_name = NotImplemented
     seed = NotImplemented
     labels_list = None
-    split_map = None
     split_to_data_split: Mapping[str, str] = {
         "train": "train",
         "validation": "validation",
