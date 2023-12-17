@@ -32,7 +32,7 @@ class AbstractTask:
         "validation": "validation",
         "test": "test",
     }
-    mall_datasets_without_all_splits = [
+    small_datasets_without_all_splits = [
         "cola",
         "wnli",
         "rte",
@@ -121,7 +121,7 @@ class AbstractTask:
     def map_dataset(self, dataset, add_prefix):
         return dataset.map(
             functools.partial(self.preprocessor, add_prefix=add_prefix),
-            remove_columns=dataset["train"].column_names,
+            remove_columns=dataset.column_names,
             load_from_cache_file=False,
             desc=f"Running {self.name}_preprocessor on dataset",
         )
@@ -168,6 +168,11 @@ class Squad(AbstractTask):
     name = "squad"
     metrics = [SquadMetric]
     metric_names = ["SquadMetric"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation",
+        "test": "validation",
+    }
 
     def load_dataset(self, split):
         return datasets.load_dataset(self.name, split=split)

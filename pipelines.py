@@ -19,7 +19,6 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 from datetime import datetime
 
-import huggingface_hub
 
 import torch.nn.functional as F
 
@@ -54,22 +53,22 @@ class peft_training_pipeline:
 
         return inputs
 
-    # TODO add random split indices
     def get_data(self, config, tokenizer, model, add_prefix=True):
-        # at first, focus just on t5 would be enough, after that we can go wild
-        dataset = AutoTask.get(config["datasets"][0], config).get(split=None)
-
-        train_dataset = AutoTask.get(config["datasets"][0], config).get(split="train", split_validation_test=config["split_validation_test"], add_prefix=True, n_obs=None)
-        valid_dataset = AutoTask.get(config["datasets"][0], config).get(split="validation", split_validation_test=config["split_validation_test"], add_prefix=True, n_obs=None)
-        test_dataset = AutoTask.get(config["datasets"][0], config).get(split="test", split_validation_test=config["split_validation_test"], add_prefix=True, n_obs=None)
+        cols_to_remove = ["source", "target", "extra_fields", "task"]
 
         max_target_length = AutoTask.get(
             config["datasets"][0], config
         ).get_max_target_length(
             tokenizer, default_max_length=config["max_target_length"]
         )
-        
-        dataset = dataset.map(
+
+        train_dataset = AutoTask.get(config["datasets"][0], config).get(
+            split="train",
+            split_validation_test=config["split_validation_test"],
+            add_prefix=True,
+            n_obs=None,
+        )
+        train_dataset = train_dataset.map(
             functools.partial(
                 self.preprocess_function,
                 config=config,
@@ -78,40 +77,69 @@ class peft_training_pipeline:
             ),
             batched=True,
             load_from_cache_file=False,
-            desc="Running preprocess_function on dataset",
+            remove_columns=cols_to_remove,
+            desc="Running preprocess_function on train_dataset",
         )
-        dataset = dataset.remove_columns(["source", "target", "extra_fields", "task"])
+
+        valid_dataset = AutoTask.get(config["datasets"][0], config).get(
+            split="validation",
+            split_validation_test=config["split_validation_test"],
+            add_prefix=True,
+            n_obs=None,
+        )
+        valid_dataset = valid_dataset.map(
+            functools.partial(
+                self.preprocess_function,
+                config=config,
+                tokenizer=tokenizer,
+                max_target_length=max_target_length,
+            ),
+            batched=True,
+            load_from_cache_file=False,
+            remove_columns=cols_to_remove,
+            desc="Running preprocess_function on valid_dataset",
+        )
+
+        test_dataset = AutoTask.get(config["datasets"][0], config).get(
+            split="test",
+            split_validation_test=config["split_validation_test"],
+            add_prefix=True,
+            n_obs=None,
+        )
+        test_dataset = test_dataset.map(
+            functools.partial(
+                self.preprocess_function,
+                config=config,
+                tokenizer=tokenizer,
+                max_target_length=max_target_length,
+            ),
+            batched=True,
+            load_from_cache_file=False,
+            remove_columns=cols_to_remove,
+            desc="Running preprocess_function on test_dataset",
+        )
 
         data_collator = DataCollatorForSeq2Seq(tokenizer)
 
         train_dataloader = DataLoader(
-            dataset["train"],
+            train_dataset,
             shuffle=True,
             collate_fn=data_collator,
             batch_size=config["batch_size"],
             pin_memory=True,
         )
         valid_dataloader = DataLoader(
-            dataset["validation"],
+            valid_dataset,
             collate_fn=data_collator,
             batch_size=config["batch_size"],
             pin_memory=True,
         )
-
-        if "test" in dataset:
-            test_dataloader = DataLoader(
-                dataset["test"],
-                collate_fn=data_collator,
-                batch_size=config["batch_size"],
-                pin_memory=True,
-            )
-        else:
-            test_dataloader = DataLoader(
-                dataset["validation"],
-                collate_fn=data_collator,
-                batch_size=config["batch_size"],
-                pin_memory=True,
-            )
+        test_dataloader = DataLoader(
+            test_dataset,
+            collate_fn=data_collator,
+            batch_size=config["batch_size"],
+            pin_memory=True,
+        )
 
         return train_dataloader, valid_dataloader, test_dataloader
 
@@ -130,7 +158,7 @@ class peft_training_pipeline:
         decoded_preds, decoded_labels = postprocessor(
             preds, labels, tokenizer, ignore_pad_token_for_loss=True
         )
-        # if prefix == "valid":
+
         print(decoded_preds, decoded_labels)
 
         metrics = {
@@ -289,7 +317,9 @@ class peft_training_pipeline:
                 )
 
                 tokenizer = AutoTokenizer.from_pretrained(
-                    config["tokenizer_name_or_path"], model_max_length=512
+                    config["tokenizer_name_or_path"],
+                    model_max_length=512,
+                    use_fast=True,
                 )
                 if tokenizer.pad_token_id is None:
                     tokenizer.pad_token_id = tokenizer.eos_token_id
