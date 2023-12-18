@@ -114,9 +114,8 @@ class peft_training_pipeline:
             desc="Running preprocess_function on test_dataset",
         )
         test_dataset = test_dataset.remove_columns(cols_to_remove)
-
-        print(tokenizer.label_pad_token_id)
-        data_collator = TaskDataCollatorForSeq2Seq(tokenizer, label_pad_token_id=tokenizer.label_pad_token_id)
+        
+        data_collator = TaskDataCollatorForSeq2Seq(tokenizer)
 
         train_dataloader = DataLoader(
             train_dataset,
