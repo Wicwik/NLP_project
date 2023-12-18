@@ -198,11 +198,10 @@ class peft_training_pipeline:
         )
 
         for _, batch in enumerate(tqdm(train_dataloader)):
-            print(batch.items())
-            batch = {k: v.to(config["device"]) for k, v in batch.items()}
-            outputs = model(**batch)
+            # batch = {k: v.to(config["device"]) for k, v in batch.items()}
+            outputs = model(input_ids=batch["input_ids"], labels=batch["labels"], attention_mask=batch["attention_mask"])
 
-            preds = model.generate(**batch, max_new_tokens=max_new_tokens)
+            preds = model.generate(input_ids=batch["input_ids"], labels=batch["labels"], attention_mask=batch["attention_mask"], max_new_tokens=max_new_tokens)
 
             loss = outputs.loss
             train_loss += loss.detach().float()
@@ -237,10 +236,10 @@ class peft_training_pipeline:
 
         with torch.no_grad():
             for _, batch in enumerate(tqdm(valid_dataloader)):
-                batch = {k: v.to(config["device"]) for k, v in batch.items()}
-                outputs = model(**batch)
+                # batch = {k: v.to(config["device"]) for k, v in batch.items()}
+                outputs = model(input_ids=batch["input_ids"], labels=batch["labels"], attention_mask=batch["attention_mask"])
 
-                preds = model.generate(**batch, max_new_tokens=max_new_tokens)
+                preds = model.generate(input_ids=batch["input_ids"], labels=batch["labels"], attention_mask=batch["attention_mask"], max_new_tokens=max_new_tokens)
 
                 loss = outputs.loss
                 valid_loss += loss.detach().float()
@@ -272,11 +271,11 @@ class peft_training_pipeline:
         )
 
         for _, batch in enumerate(tqdm(test_dataloader)):
-            batch = {k: v.to(config["device"]) for k, v in batch.items()}
+            # batch = {k: v.to(config["device"]) for k, v in batch.items()}
             with torch.no_grad():
-                outputs = model(**batch)
+                outputs = model(input_ids=batch["input_ids"], labels=batch["labels"], attention_mask=batch["attention_mask"])
 
-            preds = model.generate(**batch, max_new_tokens=max_new_tokens)
+            preds = model.generate(input_ids=batch["input_ids"], labels=batch["labels"], attention_mask=batch["attention_mask"], max_new_tokens=max_new_tokens)
 
             loss = outputs.loss
             valid_loss += loss.detach().float()
