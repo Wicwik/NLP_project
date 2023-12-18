@@ -13,16 +13,12 @@ from transformers import (
     AutoTokenizer,
     AutoModelForSeq2SeqLM,
     get_linear_schedule_with_warmup,
-    DataCollatorForSeq2Seq,
 )
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 from datetime import datetime
 
-
-import torch.nn.functional as F
-
-from tasks import AutoTask
+from tasks import AutoTask, TaskDataCollatorForSeq2Seq
 
 
 class peft_training_pipeline:
@@ -54,7 +50,7 @@ class peft_training_pipeline:
         return inputs
 
     def get_data(self, config, tokenizer, model, add_prefix=True):
-        cols_to_remove = ["source", "target", "extra_fields", "task"]
+        cols_to_remove = ["source", "target", "extra_fields"]
 
         max_target_length = AutoTask.get(
             config["datasets"][0], config
@@ -119,7 +115,8 @@ class peft_training_pipeline:
         )
         test_dataset = test_dataset.remove_columns(cols_to_remove)
 
-        data_collator = DataCollatorForSeq2Seq(tokenizer)
+        print(tokenizer.label_pad_token_id)
+        data_collator = TaskDataCollatorForSeq2Seq(tokenizer, label_pad_token_id=tokenizer.label_pad_token_id)
 
         train_dataloader = DataLoader(
             train_dataset,
@@ -188,7 +185,7 @@ class peft_training_pipeline:
     def train(self, model, config, optimizer, train_dataloader, tokenizer):
         lr_scheduler = get_linear_schedule_with_warmup(
             optimizer=optimizer,
-            num_warmup_steps=0,
+            num_warmup_steps=config["warmup_steps"],
             num_training_steps=(len(train_dataloader) * config["num_epochs"]),
         )
 
