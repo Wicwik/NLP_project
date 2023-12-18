@@ -198,6 +198,7 @@ class peft_training_pipeline:
         )
 
         for _, batch in enumerate(tqdm(train_dataloader)):
+            print(batch)
             batch = {k: v.to(config["device"]) for k, v in batch.items()}
             outputs = model(**batch)
 
@@ -236,7 +237,6 @@ class peft_training_pipeline:
 
         with torch.no_grad():
             for _, batch in enumerate(tqdm(valid_dataloader)):
-                print(batch)
                 batch = {k: v.to(config["device"]) for k, v in batch.items()}
                 outputs = model(**batch)
 
