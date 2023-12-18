@@ -62,7 +62,9 @@ class peft_training_pipeline:
             split="train",
             split_validation_test=config["split_validation_test"],
             add_prefix=True,
-            n_obs=config["max_train_samples"] if "max_train_samples" in config else None,
+            n_obs=config["max_train_samples"]
+            if "max_train_samples" in config
+            else None,
         )
         train_dataset = train_dataset.map(
             functools.partial(
@@ -81,7 +83,9 @@ class peft_training_pipeline:
             split="validation",
             split_validation_test=config["split_validation_test"],
             add_prefix=True,
-            n_obs=config["max_valid_samples"] if "max_valid_samples" in config else None,
+            n_obs=config["max_valid_samples"]
+            if "max_valid_samples" in config
+            else None,
         )
         valid_dataset = valid_dataset.map(
             functools.partial(
@@ -199,9 +203,18 @@ class peft_training_pipeline:
 
         for _, batch in enumerate(tqdm(train_dataloader)):
             # batch = {k: v.to(config["device"]) for k, v in batch.items()}
-            outputs = model(input_ids=batch["input_ids"], labels=batch["labels"], attention_mask=batch["attention_mask"])
+            outputs = model(
+                input_ids=batch["input_ids"].to(config["device"]),
+                labels=batch["labels"].to(config["device"]),
+                attention_mask=batch["attention_mask"].to(config["device"]),
+            )
 
-            preds = model.generate(input_ids=batch["input_ids"], labels=batch["labels"], attention_mask=batch["attention_mask"], max_new_tokens=max_new_tokens)
+            preds = model.generate(
+                input_ids=batch["input_ids"].to(config["device"]),
+                labels=batch["labels"].to(config["device"]),
+                attention_mask=batch["attention_mask"].to(config["device"]),
+                max_new_tokens=max_new_tokens,
+            )
 
             loss = outputs.loss
             train_loss += loss.detach().float()
@@ -237,9 +250,18 @@ class peft_training_pipeline:
         with torch.no_grad():
             for _, batch in enumerate(tqdm(valid_dataloader)):
                 # batch = {k: v.to(config["device"]) for k, v in batch.items()}
-                outputs = model(input_ids=batch["input_ids"], labels=batch["labels"], attention_mask=batch["attention_mask"])
+                outputs = model(
+                    input_ids=batch["input_ids"].to(config["device"]),
+                    labels=batch["labels"].to(config["device"]),
+                    attention_mask=batch["attention_mask"].to(config["device"]),
+                )
 
-                preds = model.generate(input_ids=batch["input_ids"], labels=batch["labels"], attention_mask=batch["attention_mask"], max_new_tokens=max_new_tokens)
+                preds = model.generate(
+                    input_ids=batch["input_ids"].to(config["device"]),
+                    labels=batch["labels"].to(config["device"]),
+                    attention_mask=batch["attention_mask"].to(config["device"]),
+                    max_new_tokens=max_new_tokens,
+                )
 
                 loss = outputs.loss
                 valid_loss += loss.detach().float()
@@ -273,9 +295,18 @@ class peft_training_pipeline:
         for _, batch in enumerate(tqdm(test_dataloader)):
             # batch = {k: v.to(config["device"]) for k, v in batch.items()}
             with torch.no_grad():
-                outputs = model(input_ids=batch["input_ids"], labels=batch["labels"], attention_mask=batch["attention_mask"])
+                outputs = model(
+                    input_ids=batch["input_ids"].to(config["device"]),
+                    labels=batch["labels"].to(config["device"]),
+                    attention_mask=batch["attention_mask"].to(config["device"]),
+                )
 
-            preds = model.generate(input_ids=batch["input_ids"], labels=batch["labels"], attention_mask=batch["attention_mask"], max_new_tokens=max_new_tokens)
+            preds = model.generate(
+                input_ids=batch["input_ids"].to(config["device"]),
+                labels=batch["labels"].to(config["device"]),
+                attention_mask=batch["attention_mask"].to(config["device"]),
+                max_new_tokens=max_new_tokens,
+            )
 
             loss = outputs.loss
             valid_loss += loss.detach().float()
