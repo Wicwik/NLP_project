@@ -66,7 +66,7 @@ class peft_training_pipeline:
             split="train",
             split_validation_test=config["split_validation_test"],
             add_prefix=True,
-            n_obs=None,
+            n_obs=config["max_train_samples"] if "max_train_samples" in config else None,
         )
         train_dataset = train_dataset.map(
             functools.partial(
@@ -85,7 +85,7 @@ class peft_training_pipeline:
             split="validation",
             split_validation_test=config["split_validation_test"],
             add_prefix=True,
-            n_obs=None,
+            n_obs=config["max_valid_samples"] if "max_valid_samples" in config else None,
         )
         valid_dataset = valid_dataset.map(
             functools.partial(
@@ -104,7 +104,7 @@ class peft_training_pipeline:
             split="test",
             split_validation_test=config["split_validation_test"],
             add_prefix=True,
-            n_obs=None,
+            n_obs=config["max_test_samples"] if "max_test_samples" in config else None,
         )
         test_dataset = test_dataset.map(
             functools.partial(

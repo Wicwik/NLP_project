@@ -15,7 +15,9 @@ n_runs = 1
 wandb_project = "prompt_tunning_soft_prompt_experiments"
 max_source_length = 256
 split_validation_test = true
-
+max_train_samples = 10000
+max_valid_samples = 5000
+max_test_samples = 5000
 
 [[configs]]
 datasets = ["mrpc"]
