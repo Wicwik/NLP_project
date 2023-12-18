@@ -198,7 +198,7 @@ class peft_training_pipeline:
         )
 
         for _, batch in enumerate(tqdm(train_dataloader)):
-            print(batch)
+            print(batch.items())
             batch = {k: v.to(config["device"]) for k, v in batch.items()}
             outputs = model(**batch)
 
