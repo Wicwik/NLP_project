@@ -114,7 +114,7 @@ class peft_training_pipeline:
             desc="Running preprocess_function on test_dataset",
         )
         test_dataset = test_dataset.remove_columns(cols_to_remove)
-        
+
         data_collator = TaskDataCollatorForSeq2Seq(tokenizer)
 
         train_dataloader = DataLoader(
@@ -236,6 +236,7 @@ class peft_training_pipeline:
 
         with torch.no_grad():
             for _, batch in enumerate(tqdm(valid_dataloader)):
+                print(batch)
                 batch = {k: v.to(config["device"]) for k, v in batch.items()}
                 outputs = model(**batch)
 
