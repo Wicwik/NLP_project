@@ -181,9 +181,9 @@ class peft_training_pipeline:
 
         result_m = {}
         for n, m in metrics.items():
-            if n == "squad":
-                result_m[f"{prefix}_{n}_em"] = m["em"]
-                result_m[f"{prefix}_{n}_f1"] = m["f1"]
+            if "squad" in n.lower():
+                result_m[f"{prefix}_em"] = m["em"]
+                result_m[f"{prefix}_f1"] = m["f1"]
 
             else:
                 result_m[n] = m
