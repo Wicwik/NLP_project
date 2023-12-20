@@ -173,7 +173,7 @@ class peft_training_pipeline:
             preds, labels, tokenizer, ignore_pad_token_for_loss=True
         )
 
-        print(decoded_preds, decoded_labels)
+        # print(decoded_preds, decoded_labels)
 
         metrics = {
             n: m(decoded_preds, decoded_labels) for n, m in self.metric_fs.items()
