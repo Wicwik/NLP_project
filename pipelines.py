@@ -3,7 +3,7 @@
 import torch
 import wandb
 import functools
-import os 
+import os
 
 import numpy as np
 
@@ -339,6 +339,7 @@ class peft_training_pipeline:
             peft_config = PromptTuningConfig(
                 task_type=config["task_type"],
                 num_virtual_tokens=config["num_virtual_tokens"],
+                prompt_init=config["prompt_init"],
             )
             # peft_config = PromptTuningConfig(task_type=TaskType.SEQ_2_SEQ_LM, num_virtual_tokens=config["num_virtual_tokens"])
 
@@ -385,7 +386,10 @@ class peft_training_pipeline:
                     if metrics["valid_loss"] < min_eval_loss:
                         min_eval_loss = metrics["valid_loss"]
 
-                        checkpoint_name = os.path.join(os.path.dirname(__file__), f"{config['output_dir']}/{config['model_name_or_path']}_{peft_config.peft_type}_{peft_config.task_type}_{timestamp}_run-{nr+1}")
+                        checkpoint_name = os.path.join(
+                            os.path.dirname(__file__),
+                            f"{config['output_dir']}/{config['model_name_or_path']}_{peft_config.peft_type}_{peft_config.task_type}_{timestamp}_run-{nr+1}",
+                        )
                         model.save_pretrained(checkpoint_name)
 
                         artifact = wandb.Artifact(

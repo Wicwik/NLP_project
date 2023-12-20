@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 
 
 class PromptTuningEmbedding(torch.nn.Module):
@@ -9,6 +10,16 @@ class PromptTuningEmbedding(torch.nn.Module):
             config.num_virtual_tokens * config.num_transformer_submodules
         )
         self.embedding = torch.nn.Embedding(total_virtual_tokens, config.token_dim)
+
+        if config.prompt_init == "vocab":
+            indices = np.random.permutation(range(5000))[: total_virtual_tokens]
+
+            word_embedding_weights = (
+                word_embeddings(torch.LongTensor(indices)).detach().clone()
+            )
+            word_embedding_weights = word_embedding_weights.to(torch.float32)
+
+            self.embedding.weight = torch.nn.Parameter(word_embedding_weights)
 
     def forward(self, indices):
         prompt_embeddings = self.embedding(indices)

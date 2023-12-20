@@ -291,9 +291,11 @@ class QQP(AbstractTask):
     labels_list = ["0", "1"]
     metrics = [Accuraccy, F1ScoreWithInvalid]
     metric_names = ["accuracy", "f1"]
-    split_to_data_split = {"train": "train",
-                           "validation": "validation",
-                           "test": "validation"}
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation",
+        "test": "validation",
+    }
 
     def load_dataset(self, split):
         return datasets.load_dataset("glue", self.name, split=split)
