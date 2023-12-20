@@ -291,6 +291,9 @@ class QQP(AbstractTask):
     labels_list = ["0", "1"]
     metrics = [Accuraccy, F1ScoreWithInvalid]
     metric_names = ["accuracy", "f1"]
+    split_to_data_split = {"train": "train",
+                           "validation": "validation",
+                           "test": "validation"}
 
     def load_dataset(self, split):
         return datasets.load_dataset("glue", self.name, split=split)
@@ -313,7 +316,7 @@ class SuperGLUERecord(AbstractTask):
     metric_names = ["SquadMetric"]
 
     def load_dataset(self, split):
-        return datasets.load_dataset("super_glue", self.name, split=split)
+        return datasets.load_dataset("super_glue", "record", split=split)
 
     def preprocessor(self, batch, add_prefix=True):
         new_batch = defaultdict(list)

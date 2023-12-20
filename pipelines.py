@@ -1,9 +1,9 @@
 # TODO fix autotask so that AutoTask.get() does not require config as parameter
-# TODO investigate why are labels for squad validation set duplicated
 
 import torch
 import wandb
 import functools
+import os 
 
 import numpy as np
 
@@ -40,11 +40,23 @@ class peft_training_pipeline:
     def preprocess_function(self, examples, config, tokenizer, max_target_length):
         inputs = tokenizer(
             examples["source"],
-            text_target=examples["target"],
-            max_length=config["max_source_length"],
+            # text_target=examples["target"],
+            max_length=config[
+                "max_source_length"
+            ],  # probably bug we want have different token lenghts for targets
             padding=False,
             truncation=True,
         )
+
+        with tokenizer.as_target_tokenizer():
+            labels = tokenizer(
+                examples["target"],
+                max_length=max_target_length,
+                padding=False,
+                truncation=True,
+            )
+
+        inputs["labels"] = labels["input_ids"]
         inputs["extra_fields"] = examples["extra_fields"]
 
         return inputs
@@ -373,7 +385,7 @@ class peft_training_pipeline:
                     if metrics["valid_loss"] < min_eval_loss:
                         min_eval_loss = metrics["valid_loss"]
 
-                        checkpoint_name = f"{config['model_name_or_path']}_{peft_config.peft_type}_{peft_config.task_type}_{timestamp}_run-{nr+1}"
+                        checkpoint_name = os.path.join(os.path.dirname(__file__), f"{config['output_dir']}/{config['model_name_or_path']}_{peft_config.peft_type}_{peft_config.task_type}_{timestamp}_run-{nr+1}")
                         model.save_pretrained(checkpoint_name)
 
                         artifact = wandb.Artifact(
