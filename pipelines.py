@@ -1,24 +1,21 @@
 # TODO fix autotask so that AutoTask.get() does not require config as parameter
 
-import torch
-import wandb
 import functools
-import os
 
-import numpy as np
+import os
+import torch
 
 # from peft import TaskType
-from cpeft import PromptTuningConfig, PeftModel, get_peft_model
+from cpeft import PromptTuningConfig, get_peft_model
 from transformers import (
     AutoTokenizer,
     AutoModelForSeq2SeqLM,
-    get_linear_schedule_with_warmup,
 )
 from torch.utils.data import DataLoader
-from tqdm import tqdm
 from datetime import datetime
 
 from tasks import AutoTask, TaskDataCollatorForSeq2Seq
+from trainer import Trainer
 
 
 class peft_training_pipeline:
@@ -29,13 +26,6 @@ class peft_training_pipeline:
     def __init__(self, configs, use_wandb=True):
         self.configs = configs
         self.use_wandb = use_wandb
-
-    def init_wandb(self, config, timestamp, nr):
-        return wandb.init(
-            project=config["wandb_project"],
-            config=config,
-            name=f"{config['model_name_or_path']}_{config['peft_type']}_{config['task_type']}_{'_'.join(config['datasets'])}_{timestamp}_run-{nr+1}",
-        )
 
     def preprocess_function(self, examples, config, tokenizer, max_target_length):
         inputs = tokenizer(
@@ -69,6 +59,8 @@ class peft_training_pipeline:
         ).get_max_target_length(
             tokenizer, default_max_length=config["max_target_length"]
         )
+
+        config["max_target_length"] = max_target_length
 
         train_dataset = AutoTask.get(config["datasets"][0], config).get(
             split="train",
@@ -173,7 +165,7 @@ class peft_training_pipeline:
             preds, labels, tokenizer, ignore_pad_token_for_loss=True
         )
 
-        # print(decoded_preds, decoded_labels)
+        print(decoded_preds, decoded_labels)
 
         metrics = {
             n: m(decoded_preds, decoded_labels) for n, m in self.metric_fs.items()
@@ -184,158 +176,17 @@ class peft_training_pipeline:
             if "squad" in n.lower():
                 result_m[f"{prefix}_em"] = m["em"]
                 result_m[f"{prefix}_f1"] = m["f1"]
-
             else:
                 result_m[n] = m
 
         return result_m
 
-    def compute_metrics_all(self, prefix):
-        return {f"{prefix}_{n}": m.compute() for n, m in self.metric_fs.items()}
-
-    def reset_metrics(self):
-        for n in self.metric_fs:
-            self.metric_fs[n].reset()
-
-    def train(self, model, config, optimizer, train_dataloader, tokenizer):
-        lr_scheduler = get_linear_schedule_with_warmup(
-            optimizer=optimizer,
-            num_warmup_steps=config["warmup_steps"],
-            num_training_steps=(len(train_dataloader) * config["num_epochs"]),
-        )
-
-        model.train()
-        train_loss = 0
-        metrics = {}
-        max_new_tokens = AutoTask.get(
-            config["datasets"][0], config
-        ).get_max_target_length(
-            tokenizer, default_max_length=config["max_target_length"]
-        )
-
-        for _, batch in enumerate(tqdm(train_dataloader)):
-            # batch = {k: v.to(config["device"]) for k, v in batch.items()}
-            outputs = model(
-                input_ids=batch["input_ids"].to(config["device"]),
-                labels=batch["labels"].to(config["device"]),
-                attention_mask=batch["attention_mask"].to(config["device"]),
-            )
-
-            preds = model.generate(
-                input_ids=batch["input_ids"].to(config["device"]),
-                labels=batch["labels"].to(config["device"]),
-                attention_mask=batch["attention_mask"].to(config["device"]),
-                max_new_tokens=max_new_tokens,
-            )
-
-            loss = outputs.loss
-            train_loss += loss.detach().float()
-            metrics = self.compute_metrics(
-                preds.cpu(), batch["labels"].cpu(), tokenizer, config, "train"
-            )
-
-            loss.backward()
-            optimizer.step()
-            lr_scheduler.step()
-
-            optimizer.zero_grad()
-
-        metrics = self.compute_metrics_all("train")
-        metrics.update({"train_loss": train_loss / len(train_dataloader)})
-        metrics.update({"train_ppl": torch.exp(metrics["train_loss"])})
-
-        self.reset_metrics()
-
-        return metrics
-
-    # test valid van be probbably a single method with different flags
-    def valid(self, model, config, valid_dataloader, tokenizer):
-        model.eval()
-        valid_loss = 0
-        metrics = {}
-        max_new_tokens = AutoTask.get(
-            config["datasets"][0], config
-        ).get_max_target_length(
-            tokenizer, default_max_length=config["max_target_length"]
-        )
-
-        with torch.no_grad():
-            for _, batch in enumerate(tqdm(valid_dataloader)):
-                # batch = {k: v.to(config["device"]) for k, v in batch.items()}
-                outputs = model(
-                    input_ids=batch["input_ids"].to(config["device"]),
-                    labels=batch["labels"].to(config["device"]),
-                    attention_mask=batch["attention_mask"].to(config["device"]),
-                )
-
-                preds = model.generate(
-                    input_ids=batch["input_ids"].to(config["device"]),
-                    labels=batch["labels"].to(config["device"]),
-                    attention_mask=batch["attention_mask"].to(config["device"]),
-                    max_new_tokens=max_new_tokens,
-                )
-
-                loss = outputs.loss
-                valid_loss += loss.detach().float()
-                metrics = self.compute_metrics(
-                    preds.cpu(), batch["labels"].cpu(), tokenizer, config, "valid"
-                )
-
-        metrics = self.compute_metrics_all("valid")
-        metrics.update({"valid_loss": valid_loss / len(valid_dataloader)})
-        metrics.update({"valid_ppl": torch.exp(metrics["valid_loss"])})
-
-        self.reset_metrics()
-
-        return metrics
-
-    def test(self, config, test_dataloader, checkpoint_name, tokenizer):
-        model = AutoModelForSeq2SeqLM.from_pretrained(config["model_name_or_path"])
-        model = PeftModel.from_pretrained(model, checkpoint_name)
-
-        model.to(config["device"])
-        model.eval()
-        valid_loss = 0
-        metrics = {}
-
-        max_new_tokens = AutoTask.get(
-            config["datasets"][0], config
-        ).get_max_target_length(
-            tokenizer, default_max_length=config["max_target_length"]
-        )
-
-        for _, batch in enumerate(tqdm(test_dataloader)):
-            # batch = {k: v.to(config["device"]) for k, v in batch.items()}
-            with torch.no_grad():
-                outputs = model(
-                    input_ids=batch["input_ids"].to(config["device"]),
-                    labels=batch["labels"].to(config["device"]),
-                    attention_mask=batch["attention_mask"].to(config["device"]),
-                )
-
-            preds = model.generate(
-                input_ids=batch["input_ids"].to(config["device"]),
-                labels=batch["labels"].to(config["device"]),
-                attention_mask=batch["attention_mask"].to(config["device"]),
-                max_new_tokens=max_new_tokens,
-            )
-
-            loss = outputs.loss
-            valid_loss += loss.detach().float()
-            metrics = self.compute_metrics(
-                preds.cpu(), batch["labels"].cpu(), tokenizer, config, "test"
-            )
-
-        metrics = self.compute_metrics_all("test")
-        metrics.update({"test_loss": valid_loss / len(test_dataloader)})
-        metrics.update({"test_ppl": torch.exp(metrics["test_loss"])})
-
-        self.reset_metrics()
-
-        return metrics
-
     def run(self):
         for config in self.configs:
+            config["output_dir"] = os.path.join(
+                os.path.dirname(__file__), config["output_dir"]
+            )
+
             peft_config = PromptTuningConfig(
                 task_type=config["task_type"],
                 num_virtual_tokens=config["num_virtual_tokens"],
@@ -344,13 +195,17 @@ class peft_training_pipeline:
             # peft_config = PromptTuningConfig(task_type=TaskType.SEQ_2_SEQ_LM, num_virtual_tokens=config["num_virtual_tokens"])
 
             for nr in range(config["n_runs"]):
+                config["run"] = nr + 1
+
+                print(f"Started {config['run']}. run...")
+
                 model = AutoModelForSeq2SeqLM.from_pretrained(
                     config["model_name_or_path"]
-                )  # this can be either put into config or automated
+                )
                 model = get_peft_model(model, peft_config)
                 model.print_trainable_parameters()
                 model.to(config["device"])
-                timestamp = datetime.now().strftime("%m%d%Y%H%M%S")
+                config["timestamp"] = datetime.now().strftime("%m%d%Y%H%M%S")
 
                 self.metric_fs = self.create_metric_fs(config)
 
@@ -366,47 +221,16 @@ class peft_training_pipeline:
                 if tokenizer.pad_token_id is None:
                     tokenizer.pad_token_id = tokenizer.eos_token_id
 
-                train_dataloader, valid_dataloader, test_dataloader = self.get_data(
-                    config, tokenizer, model
+                trainer = Trainer(
+                    model=model,
+                    config=config,
+                    dataloaders=self.get_data(config, tokenizer, model),
+                    optimizer=optimizer,
+                    tokenizer=tokenizer,
+                    metric_fs=self.metric_fs,
+                    compute_metrics=self.compute_metrics,
                 )
 
-                wandb_run = None
-                if self.use_wandb:
-                    wandb_run = self.init_wandb(config, timestamp, nr)
+                trainer.run()
 
-                min_eval_loss = np.inf
-                for epoch in range(config["num_epochs"]):
-                    metrics = self.train(
-                        model, config, optimizer, train_dataloader, tokenizer
-                    )
-                    metrics.update(
-                        self.valid(model, config, valid_dataloader, tokenizer)
-                    )
-
-                    if metrics["valid_loss"] < min_eval_loss:
-                        min_eval_loss = metrics["valid_loss"]
-
-                        checkpoint_name = os.path.join(
-                            os.path.dirname(__file__),
-                            f"{config['output_dir']}/{config['model_name_or_path']}_{peft_config.peft_type}_{peft_config.task_type}_{timestamp}_run-{nr+1}",
-                        )
-                        model.save_pretrained(checkpoint_name)
-
-                        artifact = wandb.Artifact(
-                            name=f"{config['model_name_or_path']}_{peft_config.peft_type}_{peft_config.task_type}_{timestamp}_run-{nr+1}",
-                            type="weights",
-                        )
-                        artifact.add_dir(local_path=checkpoint_name)
-                        wandb_run.log_artifact(artifact)
-
-                    wandb.log(metrics)
-                    print(f"{epoch=},", metrics)
-
-                test_metrics = self.test(
-                    config, test_dataloader, checkpoint_name, tokenizer
-                )
-                wandb.log(test_metrics)
-                print(test_metrics)
-
-                if wandb_run:
-                    wandb.finish()
+                print(f"Finished {config['run']}. run...")
