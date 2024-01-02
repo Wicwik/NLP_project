@@ -203,6 +203,14 @@ class peft_training_pipeline:
                     config["model_name_or_path"]
                 )
                 model = get_peft_model(model, peft_config)
+
+                pretrained_attempt = torch.load(os.path.join(config["output_dir"], "attempt_original/MNLI/adapter_model.bin"))
+                # print(pretrained_attempt, pretrained_attempt.size())
+                # print(model.prompt_encoder.peft.embedding.weight)
+
+                # model.prompt_encoder.peft.embedding.weight = pretrained_attempt
+                # print(model.prompt_encoder.peft.embedding.weight)
+
                 model.print_trainable_parameters()
                 model.to(config["device"])
                 config["timestamp"] = datetime.now().strftime("%m%d%Y%H%M%S")

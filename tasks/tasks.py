@@ -260,12 +260,37 @@ class QNLI(AbstractTask):
         return self.formater(self.name, input_texts, label_texts, add_prefix)
 
 
+# class MNLI(AbstractTask):
+#     name = "mnli"
+#     labels_list = ["entailment", "neutral", "contradiction"]
+#     label_names = {0:"entailment", 1:"neutral", 2:"contradiction"}
+#     metrics = [SquadMetric, Accuraccy]
+#     metric_names = ["SquadMetric", "accuraccy"]
+#     split_to_data_split = {
+#         "train": "train",
+#         "validation": "validation_mismatched",
+#         "test": "validation_matched",
+#     }
+
+#     def load_dataset(self, split):
+#         return datasets.load_dataset("glue", self.name, split=split)
+
+#     def preprocessor(self, example, add_prefix=True):
+#         input_texts = [
+#             "premise:",
+#             example["premise"],
+#             "hypothesis:",
+#             example["hypothesis"],
+#         ]
+#         label_texts = [str(self.label_names[example["label"]])]
+
+#         return self.formater(self.name, input_texts, label_texts, add_prefix)
+
 class MNLI(AbstractTask):
     name = "mnli"
-    labels_list = ["entailment", "neutral", "contradiction"]
-    label_names = {0:"entailment", 1:"neutral", 2:"contradiction"}
-    metrics = [SquadMetric, Accuraccy]
-    metric_names = ["SquadMetric", "accuraccy"]
+    labels_list = ["0", "1", "2"]
+    metrics = [Accuraccy]
+    metric_names = ["accuracy"]
     split_to_data_split = {
         "train": "train",
         "validation": "validation_mismatched",
@@ -282,10 +307,9 @@ class MNLI(AbstractTask):
             "hypothesis:",
             example["hypothesis"],
         ]
-        label_texts = [str(self.label_names[example["label"]])]
+        label_texts = [str(example["label"])]
 
         return self.formater(self.name, input_texts, label_texts, add_prefix)
-
 
 class QQP(AbstractTask):
     name = "qqp"
