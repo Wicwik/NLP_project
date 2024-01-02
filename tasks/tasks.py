@@ -263,6 +263,7 @@ class QNLI(AbstractTask):
 class MNLI(AbstractTask):
     name = "mnli"
     labels_list = ["entailment", "neutral", "contradiction"]
+    label_names = {0:"entailment", 1:"neutral", 2:"contradiction"}
     metrics = [SquadMetric]
     metric_names = ["SquadMetric"]
     split_to_data_split = {
@@ -281,7 +282,7 @@ class MNLI(AbstractTask):
             "hypothesis:",
             example["hypothesis"],
         ]
-        label_texts = [str(example["label"])]
+        label_texts = [str(self.label_names[example["label"]])]
 
         return self.formater(self.name, input_texts, label_texts, add_prefix)
 
