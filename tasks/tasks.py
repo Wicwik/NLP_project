@@ -264,8 +264,8 @@ class MNLI(AbstractTask):
     name = "mnli"
     labels_list = ["entailment", "neutral", "contradiction"]
     label_names = {0:"entailment", 1:"neutral", 2:"contradiction"}
-    metrics = [SquadMetric]
-    metric_names = ["SquadMetric"]
+    metrics = [SquadMetric, Accuraccy]
+    metric_names = ["SquadMetric", "accuraccy"]
     split_to_data_split = {
         "train": "train",
         "validation": "validation_mismatched",
