@@ -262,9 +262,9 @@ class QNLI(AbstractTask):
 
 class MNLI(AbstractTask):
     name = "mnli"
-    labels_list = ["0", "1", "2"]
-    metrics = [Accuraccy]
-    metric_names = ["accuracy"]
+    labels_list = ["entailment", "neutral", "contradiction"]
+    metrics = [SquadMetric]
+    metric_names = ["SquadMetric"]
     split_to_data_split = {
         "train": "train",
         "validation": "validation_mismatched",
