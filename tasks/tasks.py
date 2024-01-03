@@ -11,7 +11,7 @@ from .type import AutoType
 from collections import OrderedDict, defaultdict
 from typing import Mapping
 
-from metrics import F1ScoreWithInvalid, Accuraccy, SquadMetric
+from metrics import F1ScoreWithInvalid, Accuracy, SquadMetric
 
 from utils import pad_punctuation
 
@@ -190,7 +190,7 @@ class Squad(AbstractTask):
 class MRPC(AbstractTask):
     name = "mrpc"
     labels_list = ["0", "1"]
-    metrics = [Accuraccy, F1ScoreWithInvalid]
+    metrics = [Accuracy, F1ScoreWithInvalid]
     metric_names = ["accuracy", "f1"]
     split_to_data_split = {
         "train": "train",
@@ -216,7 +216,7 @@ class MRPC(AbstractTask):
 class SST2(AbstractTask):
     name = "sst2"
     labels_list = ["0", "1"]
-    metrics = [Accuraccy]
+    metrics = [Accuracy]
     metric_names = ["accuracy"]
     split_to_data_split = {
         "train": "train",
@@ -237,7 +237,7 @@ class SST2(AbstractTask):
 class QNLI(AbstractTask):
     name = "qnli"
     labels_list = ["0", "1"]
-    metrics = [Accuraccy]
+    metrics = [Accuracy]
     metric_names = ["accuracy"]
     split_to_data_split = {
         "train": "train",
@@ -264,8 +264,8 @@ class QNLI(AbstractTask):
 #     name = "mnli"
 #     labels_list = ["entailment", "neutral", "contradiction"]
 #     label_names = {0:"entailment", 1:"neutral", 2:"contradiction"}
-#     metrics = [SquadMetric, Accuraccy]
-#     metric_names = ["SquadMetric", "accuraccy"]
+#     metrics = [SquadMetric, Accuracy]
+#     metric_names = ["SquadMetric", "accuracy"]
 #     split_to_data_split = {
 #         "train": "train",
 #         "validation": "validation_mismatched",
@@ -289,7 +289,7 @@ class QNLI(AbstractTask):
 class MNLI(AbstractTask):
     name = "mnli"
     labels_list = ["0", "1", "2"]
-    metrics = [Accuraccy]
+    metrics = [Accuracy]
     metric_names = ["accuracy"]
     split_to_data_split = {
         "train": "train",
@@ -314,7 +314,7 @@ class MNLI(AbstractTask):
 class QQP(AbstractTask):
     name = "qqp"
     labels_list = ["0", "1"]
-    metrics = [Accuraccy, F1ScoreWithInvalid]
+    metrics = [Accuracy, F1ScoreWithInvalid]
     metric_names = ["accuracy", "f1"]
     split_to_data_split = {
         "train": "train",
