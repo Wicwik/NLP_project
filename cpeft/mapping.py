@@ -4,7 +4,6 @@ from .utils import _prepare_prompt_learning_config
 
 from transformers import PreTrainedModel
 
-
 def get_peft_model(
     model: PreTrainedModel, peft_config: PeftConfig, adapter_name: str = "peft"
 ) -> PeftModel:

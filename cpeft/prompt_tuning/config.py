@@ -3,7 +3,7 @@ import json
 
 from ..config import PeftConfig
 
-from dataclasses import field, dataclass, asdict
+from dataclasses import field, dataclass
 from typing import Optional
 
 
@@ -11,23 +11,25 @@ from typing import Optional
 class PromptTuningConfig(PeftConfig):
     prompt_init: str = field(
         default="random",
-        metadata={"help": "Prompt init type [random, vocab], default is RANDOM"},
+        metadata={
+            "help": "Prompt init type [random, vocab, embedding], default is RANDOM."
+        },
     )
     num_virtual_tokens: int = field(
-        default=100, metadata={"help": "Soft prompt lenght"}
+        default=100, metadata={"help": "Soft prompt lenght."}
     )
     token_dim: int = field(
-        default=None, metadata={"help": "Hidden embedding dim of the model"}
+        default=None, metadata={"help": "Hidden embedding dim of the model."}
     )
     num_transformer_submodules: Optional[int] = field(
         default=None,
-        metadata={"help": "Number of transformer submodules (e.g. decoder, encoder)"},
+        metadata={"help": "Number of transformer submodules (e.g. decoder, encoder)."},
     )
     num_attention_heads: Optional[int] = field(
-        default=None, metadata={"help": "Number of attention heads in the base model"}
+        default=None, metadata={"help": "Number of attention heads in the base model."}
     )
     num_layers: Optional[int] = field(
-        default=None, metadata={"help": "Number of layers in the model"}
+        default=None, metadata={"help": "Number of layers in the model."}
     )
 
     def __post_init__(self):
@@ -36,5 +38,3 @@ class PromptTuningConfig(PeftConfig):
     @property
     def is_prompt_learning(self) -> bool:
         return True
-
-

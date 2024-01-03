@@ -4,6 +4,13 @@ from typing import Optional, Dict
 from transformers.utils import PushToHubMixin
 
 import os, json
+from cpeft import prompt_tuning
+# from .utils import PEFT_TYPE_TO_CONFIG_MAPPING
+
+PEFT_TYPE_TO_CONFIG_MAPPING = {
+    "prompt_tuning": prompt_tuning.PromptTuningConfig,
+    # "attempt": cpeft.attempt.AttemptConfig,
+}
 
 @dataclass
 class PeftConfig(PushToHubMixin):
@@ -37,7 +44,13 @@ class PeftConfig(PushToHubMixin):
 
         loaded_attributes = cls.from_json_file(config_file)
 
-        config = PeftConfig()
+        if "peft_type" in loaded_attributes:
+            peft_type = loaded_attributes["peft_type"]
+            config_cls = PEFT_TYPE_TO_CONFIG_MAPPING[peft_type]
+        else:
+            config_cls = cls
+
+        config = config_cls()
 
         for key, value in loaded_attributes.items():
             if hasattr(config, key):
@@ -46,8 +59,20 @@ class PeftConfig(PushToHubMixin):
         return config
 
     @classmethod
+    def _get_peft_type(cls, model_id):
+        path = model_id
+        config_file = os.path.join(path, "adapter_config.json")
+
+        loaded_attributes = cls.from_json_file(config_file)
+        return loaded_attributes["peft_type"]
+
+    @classmethod
     def from_json_file(cls, path_json_file):
         with open(path_json_file, "r") as file:
             json_object = json.load(file)
 
         return json_object
+
+    @property
+    def is_prompt_learning(self):
+        return False

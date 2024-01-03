@@ -2,8 +2,12 @@ import torch
 
 from typing import Optional
 
-from .config import PeftConfig
+from cpeft import PromptTuningConfig, AttemptConfig, PeftConfig
 
+PEFT_TYPE_TO_CONFIG_MAPPING = {
+    "prompt_tuning": PromptTuningConfig,
+    "attempt": AttemptConfig,
+}
 
 def _prepare_prompt_learning_config(peft_config: PeftConfig, model_config):
     peft_config.num_layers = model_config["num_layers"]

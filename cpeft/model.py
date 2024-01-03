@@ -1,18 +1,19 @@
 import torch
 import os
-from cpeft import PeftConfig, PromptTuningEmbedding, PromptTuningConfig
+from cpeft import PeftConfig, PromptTuningEmbedding
 
 from transformers import PreTrainedModel
 from transformers.utils import PushToHubMixin
 from typing import Dict, Any, List, Optional
 from copy import deepcopy
 
-from .utils import _prepare_prompt_learning_config, infer_device, _get_batch_size
+from .utils import _prepare_prompt_learning_config, infer_device, _get_batch_size, PEFT_TYPE_TO_CONFIG_MAPPING
 from .save_and_load import (
     get_peft_model_state_dict,
     set_peft_model_state_dict,
     load_peft_weights,
 )
+
 
 
 class PeftModel(PushToHubMixin, torch.nn.Module):
@@ -89,9 +90,11 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
             model_path = model_id
 
             if adapter_name != "peft":
-                model_path = os.path.join(model_id, adapter_name)
+                model_path = os.path.join(model_path, adapter_name)
 
-            config = PromptTuningConfig.from_pretrained(model_path, **kwargs)
+            config = PEFT_TYPE_TO_CONFIG_MAPPING[
+                PeftConfig._get_peft_type(model_id)
+            ].from_pretrained(model_path, **kwargs)
 
         if config.is_prompt_learning and is_trainable:
             raise ValueError(
