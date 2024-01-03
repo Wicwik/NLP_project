@@ -47,6 +47,6 @@ peft_model = PeftModel.from_pretrained(model, peft_save)
 
 assert str(cpeft_model) == str(peft_model).replace("default", "peft").replace(
     "PromptEmbedding", "PromptTuningEmbedding"
-), "Custom peft model does not equalt to the hugging face model after saving and loading."
+), "Custom peft model does not equal to the hugging face model after saving and loading."
 
 utils.passed(__file__)

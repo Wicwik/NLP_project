@@ -286,6 +286,7 @@ class QNLI(AbstractTask):
 
 #         return self.formater(self.name, input_texts, label_texts, add_prefix)
 
+
 class MNLI(AbstractTask):
     name = "mnli"
     labels_list = ["0", "1", "2"]
@@ -310,6 +311,7 @@ class MNLI(AbstractTask):
         label_texts = [str(example["label"])]
 
         return self.formater(self.name, input_texts, label_texts, add_prefix)
+
 
 class QQP(AbstractTask):
     name = "qqp"
