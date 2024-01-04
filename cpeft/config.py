@@ -5,12 +5,7 @@ from transformers.utils import PushToHubMixin
 
 import os, json
 from cpeft import prompt_tuning
-# from .utils import PEFT_TYPE_TO_CONFIG_MAPPING
 
-PEFT_TYPE_TO_CONFIG_MAPPING = {
-    "prompt_tuning": prompt_tuning.PromptTuningConfig,
-    # "attempt": cpeft.attempt.AttemptConfig,
-}
 
 @dataclass
 class PeftConfig(PushToHubMixin):
@@ -46,6 +41,9 @@ class PeftConfig(PushToHubMixin):
 
         if "peft_type" in loaded_attributes:
             peft_type = loaded_attributes["peft_type"]
+            
+            from .mapping import PEFT_TYPE_TO_CONFIG_MAPPING
+
             config_cls = PEFT_TYPE_TO_CONFIG_MAPPING[peft_type]
         else:
             config_cls = cls

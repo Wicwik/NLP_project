@@ -7,7 +7,7 @@ from transformers.utils import PushToHubMixin
 from typing import Dict, Any, List, Optional
 from copy import deepcopy
 
-from .utils import _prepare_prompt_learning_config, infer_device, _get_batch_size, PEFT_TYPE_TO_CONFIG_MAPPING
+from .utils import _prepare_prompt_learning_config, infer_device, _get_batch_size
 from .save_and_load import (
     get_peft_model_state_dict,
     set_peft_model_state_dict,
@@ -91,6 +91,8 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
             if adapter_name != "peft":
                 model_path = os.path.join(model_path, adapter_name)
+            
+            from .mapping import PEFT_TYPE_TO_CONFIG_MAPPING
 
             config = PEFT_TYPE_TO_CONFIG_MAPPING[
                 PeftConfig._get_peft_type(model_id)
