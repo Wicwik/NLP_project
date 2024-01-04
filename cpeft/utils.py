@@ -4,6 +4,7 @@ from typing import Optional
 
 from cpeft import PeftConfig
 
+
 def _prepare_prompt_learning_config(peft_config: PeftConfig, model_config):
     peft_config.num_layers = model_config["num_layers"]
     peft_config.token_dim = model_config["d_model"]

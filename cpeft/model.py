@@ -1,6 +1,6 @@
 import torch
 import os
-from cpeft import PeftConfig, PromptTuningEmbedding
+from cpeft import PeftConfig, PromptTuningEmbedding, AttemptSubModule
 
 from transformers import PreTrainedModel
 from transformers.utils import PushToHubMixin
@@ -13,7 +13,6 @@ from .save_and_load import (
     set_peft_model_state_dict,
     load_peft_weights,
 )
-
 
 
 class PeftModel(PushToHubMixin, torch.nn.Module):
@@ -34,10 +33,13 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
         self.config = getattr(self.base_model, "config", {"model_type": "custom"})
         self.add_adapter(adapter_name, peft_config)
 
-        if hasattr(self.base_model, "config") and hasattr(
-            self.base_model.config, "pretraining_tp"
-        ):
-            self.base_model.config.pretraining_tp = 1
+        if self.peft_config[self.active_adapter].peft_type == "attempt":
+            prefix_embeddings = [
+                torch.load(path)["prompt_embeddings"]
+                for path in self.peft_config[self.active_adapter].prompt_embedding_paths
+            ]
+
+            self.attention_module[adapter_name].store_prefix_weights(prefix_embeddings)
 
     def save_pretrained(
         self,
@@ -91,7 +93,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
             if adapter_name != "peft":
                 model_path = os.path.join(model_path, adapter_name)
-            
+
             from .mapping import PEFT_TYPE_TO_CONFIG_MAPPING
 
             config = PEFT_TYPE_TO_CONFIG_MAPPING[
@@ -149,10 +151,9 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
         return trainable_params, all_param
 
     def add_adapter(self, adapter_name: str, peft_config: PeftConfig):
-        if peft_config.peft_type == "prompt_tuning":
-            self.peft_config[adapter_name] = peft_config
-            self._setup_prompt_encoder(adapter_name)
+        self.peft_config[adapter_name] = peft_config
 
+        if peft_config.is_prompt_learning:
             if hasattr(self.config, "to_dict"):
                 dict_config = self.config.to_dict()
             else:
@@ -160,6 +161,9 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
             peft_config = _prepare_prompt_learning_config(peft_config, dict_config)
             self._setup_prompt_encoder(adapter_name)
+
+            if peft_config.peft_type == "attempt":
+                self._setup_attention_module(adapter_name)
 
     def load_adapter(
         self,
@@ -209,6 +213,27 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
         return prompts
 
+    def get_instance_prompt(self, inputs_embeds, prompts):
+        attention_module = self.attention_module[self.active_adapter]
+
+        instance_prompts = attention_module(inputs_embeds, prompts)
+
+        return instance_prompts
+
+    def _setup_attention_module(self, adapter_name):
+        config = self.peft_config[adapter_name]
+
+        if not hasattr(self, "attention_module"):
+            self.attention_module = torch.nn.ModuleDict({})
+
+        if config.attn_method == "sub":
+            attention_module = AttemptSubModule(config)
+
+        attention_module = attention_module.to(self.device)
+        self.attention_module.update(
+            torch.nn.ModuleDict({adapter_name: attention_module})
+        )
+
     def _setup_prompt_encoder(self, adapter_name):
         config = self.peft_config[adapter_name]
 
@@ -245,7 +270,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
                 )
                 break
 
-        if config.peft_type == "prompt_tuning":
+        if config.peft_type == "prompt_tuning" or config.peft_type == "attempt":
             prompt_encoder = PromptTuningEmbedding(config, self.word_embeddings)
 
         prompt_encoder = prompt_encoder.to(self.device)
@@ -329,6 +354,10 @@ class PeftModelForSeq2SeqLM(PeftModel):
             )
 
         prompts = self.get_prompt(batch_size=batch_size)
+
+        if peft_config.peft_type == "attempt":
+            prompts = self.get_instance_prompt(inputs_embeds, prompts)
+
         prompts = prompts.to(inputs_embeds.dtype)
         inputs_embeds = torch.cat(
             (prompts[:, : peft_config.num_virtual_tokens], inputs_embeds), dim=1

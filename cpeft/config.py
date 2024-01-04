@@ -4,7 +4,6 @@ from typing import Optional, Dict
 from transformers.utils import PushToHubMixin
 
 import os, json
-from cpeft import prompt_tuning
 
 
 @dataclass
@@ -41,7 +40,7 @@ class PeftConfig(PushToHubMixin):
 
         if "peft_type" in loaded_attributes:
             peft_type = loaded_attributes["peft_type"]
-            
+
             from .mapping import PEFT_TYPE_TO_CONFIG_MAPPING
 
             config_cls = PEFT_TYPE_TO_CONFIG_MAPPING[peft_type]

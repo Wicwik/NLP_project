@@ -43,7 +43,7 @@ model = get_peft_model(model, pt_config)
 peft_model = PeftModel.from_pretrained(model, peft_save)
 
 # print(cpeft_model)
-# print(peft_model)
+print(peft_model)
 
 assert str(cpeft_model) == str(peft_model).replace("default", "peft").replace(
     "PromptEmbedding", "PromptTuningEmbedding"
