@@ -17,6 +17,9 @@ def get_peft_model_state_dict(model, state_dict=None, adapter_name="peft"):
     else:
         prompt_embeddings = model.get_prompt_embedding_to_save(adapter_name)
     to_return["prompt_embeddings"] = prompt_embeddings
+    
+    if config.peft_type == "attempt":
+        to_return["attention_module"] = model.attention_module.state_dict()
 
     to_return = {k.replace(f".{adapter_name}", ""): v for k, v in to_return.items()}
     return to_return

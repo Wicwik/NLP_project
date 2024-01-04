@@ -7,7 +7,7 @@ class AttemptModule(torch.nn.Module):
         super().__init__()
 
     def store_prefix_weights(self, prefix_embeddings):
-        embeddings = torch.stack([emb for emb in prefix_embeddings])
+        embeddings = torch.stack(prefix_embeddings)
         self.mul_prefix_emb.data = embeddings.clone().detach()
 
 

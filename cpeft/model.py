@@ -33,11 +33,15 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
         self.config = getattr(self.base_model, "config", {"model_type": "custom"})
         self.add_adapter(adapter_name, peft_config)
 
+        prefix_embeddings = []
         if self.peft_config[self.active_adapter].peft_type == "attempt":
-            prefix_embeddings = [
-                torch.load(path)["prompt_embeddings"]
-                for path in self.peft_config[self.active_adapter].prompt_embedding_paths
-            ]
+            for path in self.peft_config[self.active_adapter].prompt_embedding_paths:
+                emb = torch.load(path)
+                # this is because of original attempt prompts are not dict
+                if type(emb) == dict:
+                    prefix_embeddings.append(emb["prompt_embeddings"].to(self.device))
+                else:
+                    prefix_embeddings.append(emb.to(self.device))
 
             self.attention_module[adapter_name].store_prefix_weights(prefix_embeddings)
 

@@ -14,10 +14,11 @@ from transformers import AutoModelForSeq2SeqLM
 from cpeft import PromptTuningConfig, get_peft_model, PeftModel
 
 cpeft_save = "test_cpeft_saved_model"
-cpeft_config = PromptTuningConfig(task_type="seq_2_seq_lm", num_virtual_tokens=10)
+cpeft_config = PromptTuningConfig(task_type="seq_2_seq_lm", num_virtual_tokens=50)
 
 model = AutoModelForSeq2SeqLM.from_pretrained("t5-base")
 model = get_peft_model(model, cpeft_config)
+model.print_trainable_parameters()
 
 # save it
 model.save_pretrained(cpeft_save)
@@ -32,7 +33,7 @@ from transformers import AutoModelForSeq2SeqLM
 from peft import PromptTuningConfig, get_peft_model, TaskType, PeftModel
 
 peft_save = "test_peft_saved_model"
-pt_config = PromptTuningConfig(task_type=TaskType.SEQ_2_SEQ_LM, num_virtual_tokens=10)
+pt_config = PromptTuningConfig(task_type=TaskType.SEQ_2_SEQ_LM, num_virtual_tokens=50)
 
 model = AutoModelForSeq2SeqLM.from_pretrained("t5-base")
 model = get_peft_model(model, pt_config)
@@ -43,7 +44,7 @@ model = get_peft_model(model, pt_config)
 peft_model = PeftModel.from_pretrained(model, peft_save)
 
 # print(cpeft_model)
-print(peft_model)
+# print(peft_model)
 
 assert str(cpeft_model) == str(peft_model).replace("default", "peft").replace(
     "PromptEmbedding", "PromptTuningEmbedding"
