@@ -11,9 +11,20 @@ from .type import AutoType
 from collections import OrderedDict, defaultdict
 from typing import Mapping
 
-from metrics import F1ScoreWithInvalid, Accuracy, SquadMetric
+from metrics import (
+    F1ScoreWithInvalid,
+    Accuracy,
+    SquadMetric,
+    SpearmanCorrCoef,
+    PearsonCorrCoef,
+    MatthewCorrCoef,
+    MeanMulticlassF1,
+    MultircF1,
+    MeanGroupMetric,
+    ExactMatch,
+)
 
-from utils import pad_punctuation
+from utils import pad_punctuation, round_stsb_target
 
 
 class AbstractTask:
@@ -213,6 +224,26 @@ class MRPC(AbstractTask):
         return self.formater(self.name, input_texts, label_texts, add_prefix)
 
 
+class COLA(AbstractTask):
+    name = "cola"
+    labels_list = ["0", "1"]
+    metrics = [MatthewCorrCoef]
+    metric_names = ["matthews_correlation"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation",
+        "test": "validation",
+    }
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("glue", self.name, split=split)
+
+    def preprocessor(self, example, add_prefix=True):
+        input_texts = ["sentence:", example["sentence"]]
+        label_texts = [str(example["label"])]
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
+
+
 class SST2(AbstractTask):
     name = "sst2"
     labels_list = ["0", "1"]
@@ -260,31 +291,29 @@ class QNLI(AbstractTask):
         return self.formater(self.name, input_texts, label_texts, add_prefix)
 
 
-# class MNLI(AbstractTask):
-#     name = "mnli"
-#     labels_list = ["entailment", "neutral", "contradiction"]
-#     label_names = {0:"entailment", 1:"neutral", 2:"contradiction"}
-#     metrics = [SquadMetric, Accuracy]
-#     metric_names = ["SquadMetric", "accuracy"]
-#     split_to_data_split = {
-#         "train": "train",
-#         "validation": "validation_mismatched",
-#         "test": "validation_matched",
-#     }
+class RTE(AbstractTask):
+    name = "rte"
+    labels_list = ["0", "1"]
+    metrics = [Accuracy]
+    metric_names = ["accuracy"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation",
+        "test": "validation",
+    }
 
-#     def load_dataset(self, split):
-#         return datasets.load_dataset("glue", self.name, split=split)
+    def load_dataset(self, split):
+        return datasets.load_dataset("glue", self.name, split=split)
 
-#     def preprocessor(self, example, add_prefix=True):
-#         input_texts = [
-#             "premise:",
-#             example["premise"],
-#             "hypothesis:",
-#             example["hypothesis"],
-#         ]
-#         label_texts = [str(self.label_names[example["label"]])]
-
-#         return self.formater(self.name, input_texts, label_texts, add_prefix)
+    def preprocessor(self, example, add_prefix=True):
+        input_texts = [
+            "sentence1:",
+            example["sentence1"],
+            "sentence2:",
+            example["sentence2"],
+        ]
+        label_texts = [str(example["label"])]
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
 
 
 class MNLI(AbstractTask):
@@ -313,6 +342,34 @@ class MNLI(AbstractTask):
         return self.formater(self.name, input_texts, label_texts, add_prefix)
 
 
+# MNLI with text instead of numbers
+class MNLITXT(AbstractTask):
+    name = "mnli_txt"
+    labels_list = ["entailment", "neutral", "contradiction"]
+    label_names = {0: "entailment", 1: "neutral", 2: "contradiction"}
+    metrics = [SquadMetric, Accuracy]
+    metric_names = ["SquadMetric", "accuracy"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation_mismatched",
+        "test": "validation_matched",
+    }
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("glue", self.name, split=split)
+
+    def preprocessor(self, example, add_prefix=True):
+        input_texts = [
+            "premise:",
+            example["premise"],
+            "hypothesis:",
+            example["hypothesis"],
+        ]
+        label_texts = [str(self.label_names[example["label"]])]
+
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
+
+
 class QQP(AbstractTask):
     name = "qqp"
     labels_list = ["0", "1"]
@@ -337,6 +394,208 @@ class QQP(AbstractTask):
         label_texts = [str(example["label"])]
 
         return self.formater(self.name, input_texts, label_texts, add_prefix)
+
+
+class STSB(AbstractTask):
+    name = "stsb"
+    labels_list = [str(np.round(label, decimals=1)) for label in np.arange(0, 5.2, 0.2)]
+
+    metrics = [PearsonCorrCoef, SpearmanCorrCoef]
+    metric_names = ["pearsonr", "spearmanr"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation",
+        "test": "validation",
+    }
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("glue", self.name, split=split)
+
+    def preprocessor(self, example, add_prefix=True):
+        input_texts = [
+            "sentence1:",
+            example["sentence1"],
+            "sentence2:",
+            example["sentence2"],
+        ]
+
+        label_texts = [str(round_stsb_target(example["label"]))]
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
+
+
+class SuperGLUEBoolQ(AbstractTask):
+    name = "superglue-boolq"
+    labels_list = ["0", "1"]
+    metrics = [Accuracy]
+    metric_names = ["accuracy"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation",
+        "test": "validation",
+    }
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("super_glue", "boolq", split=split)
+
+    def preprocessor(self, example, add_prefix=True):
+        input_texts = ["question:", example["question"], "passage:", example["passage"]]
+        label_texts = [str(example["label"])]
+
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
+
+
+class SuperGLUECB(AbstractTask):
+    name = "superglue-cb"
+    labels_list = ["0", "1", "2"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation",
+        "test": "validation",
+    }
+    metrics = [MeanMulticlassF1(num_classes=3), Accuracy]
+    metric_names = ["f1_multiclass", "accuracy"]
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("super_glue", "cb", split=split)
+
+    def preprocessor(self, example, add_prefix=True):
+        input_texts = [
+            "premise:",
+            example["premise"],
+            "hypothesis:",
+            example["hypothesis"],
+        ]
+        label_texts = [str(example["label"])]
+
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
+
+
+class SuperGLUEMultiRC(AbstractTask):
+    name = "superglue-multirc"
+    labels_list = ["0", "1"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation",
+        "test": "validation",
+    }
+    metrics = [
+        MultircF1,
+        MeanGroupMetric(ExactMatch),
+    ]
+    metric_names = ["f1", "em"]
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("super_glue", "multirc", split=split)
+
+    def remove_markup(self, text):
+        """Removes the HTML markup."""
+        text = re.sub("<br>", " ", text)
+        text = re.sub("<(/)?b>", "", text)
+        return text
+
+    def preprocessor(self, example, add_prefix=True):
+        group = example["idx"]["question"]
+        # T5 applies remove_markup to the joined string, but this should not make
+        # any difference as well.
+        # https://github.com/google-research/text-to-text-transfer-transformer/blob/a1352e625db7ec114062f99d99b0565b9e45c155/t5/data/preprocessors.py#L797
+        input_texts = [
+            "question:",
+            self.remove_markup(example["question"]),
+            "answer:",
+            self.remove_markup(example["answer"]),
+            "paragraph:",
+            self.remove_markup(example["paragraph"]),
+        ]
+        label_texts = [str(example["label"])]
+        return self.formater(
+            self.name,
+            input_texts,
+            label_texts,
+            add_prefix,
+            extra_fields={"group": group},
+        )
+
+
+class SuperGLUEWIC(AbstractTask):
+    name = "superglue-wic"
+    labels_list = ["0", "1"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation",
+        "test": "validation",
+    }
+    metrics = [Accuracy]
+    metric_names = ["accuracy"]
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("super_glue", "wic", split=split)
+
+    def preprocessor(self, example, add_prefix=True):
+        input_texts = [
+            "sentence1:",
+            example["sentence1"],
+            "sentence2:",
+            example["sentence2"],
+            "word:",
+            example["word"],
+        ]
+        label_texts = [str(example["label"])]
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
+
+
+class SuperGLUEWSCFixed(AbstractTask):
+    # source: https://github.com/google-research/text-to-text-transfer-transformer/blob/master/t5/data/preprocessors.py
+    """Convert WSC examples to text2text format.
+    WSC includes a sentence along with 2 'spans': the first denoting a noun and
+    the other a pronoun. The 'label' specifies whether or not the pronoun is
+    referencing the noun. This preprocessor puts ' * ' around the noun and ' # '
+    around the pronoun.
+    For example, a typical example from WSC might look like
+    {
+        'text': 'This is a test sentence .',
+        'span1_text': 'test',
+        'span1_index': 3,
+        'span2_text': 'This',
+        'span2_index': 0,
+        'label': 0
+    }
+    This example would be transformed to
+    {
+        'inputs': 'wsc text: # This # is a * test * sentence .',
+        'targets': 'False'
+    }
+    """
+    name = "superglue-wsc.fixed"
+    labels_list = ["0", "1"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation",
+        "test": "validation",
+    }
+    metrics = [Accuracy]
+    metric_names = ["accuracy"]
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("super_glue", "wsc.fixed", split=split)
+
+    def _mark_span(self, text, span_str, span_idx, mark):
+        pattern_tmpl = r"^((?:\S+\s){N})(W)"
+        pattern = re.sub("N", str(span_idx), pattern_tmpl)
+        pattern = re.sub("W", span_str, pattern)
+        return re.sub(pattern, r"\1{0} \2 {0}".format(mark), text)
+
+    def preprocessor(self, example, add_prefix=True):
+        # converts text as done in T5.
+        text = example["text"]
+        text = self._mark_span(text, example["span1_text"], example["span1_index"], "*")
+        # Compensate for 2 added "words" added in previous step.
+        span2_index = example["span2_index"] + 2 * int(
+            example["span1_index"] < example["span2_index"]
+        )
+        text = self._mark_span(text, example["span2_text"], span2_index, "#")
+        src_texts = ["text:", text]
+        tgt_texts = [str(example["label"])]
+        return self.formater(self.name, src_texts, tgt_texts, add_prefix)
 
 
 class SuperGLUERecord(AbstractTask):
@@ -385,21 +644,22 @@ TASK_MAPPING = OrderedDict(
         # TODO implment all
         ("squad", Squad),
         ("mrpc", MRPC),
-        # ('cola', COLA),
+        ("cola", COLA),
         ("sst2", SST2),
         ("qnli", QNLI),
-        # ('rte', RTE),
+        ("rte", RTE),
         # ('wnli', WNLI),
         ("mnli", MNLI),
+        ("mnli_txt", MNLITXT),
         ("qqp", QQP),
-        # ('stsb', STSB),
-        # ('superglue-boolq', SuperGLUEBoolQ),
+        ("stsb", STSB),
+        ("superglue-boolq", SuperGLUEBoolQ),
         # ('superglue-rte', SuperGLUERTE),
-        # ('superglue-cb', SuperGLUECB),
+        ("superglue-cb", SuperGLUECB),
         # ('superglue-copa', SuperGLUECOPA),
-        # ('superglue-multirc', SuperGLUEMultiRC),
-        # ('superglue-wic', SuperGLUEWIC),
-        # ('superglue-wsc.fixed', SuperGLUEWSCFixed),
+        ("superglue-multirc", SuperGLUEMultiRC),
+        ("superglue-wic", SuperGLUEWIC),
+        ("superglue-wsc.fixed", SuperGLUEWSCFixed),
         ("superglue-record", SuperGLUERecord),
         # ('multi_nli', MultiNLI),
         # ('snli', SNLI),

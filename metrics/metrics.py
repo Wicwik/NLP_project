@@ -1,5 +1,9 @@
 import numpy as np
 import torch
+import scipy
+import math
+import sklearn
+import collections
 
 from .utils import normalize_squad, qa_metrics
 
@@ -7,6 +11,14 @@ from torchmetrics import Metric
 from torchmetrics.functional import confusion_matrix
 
 # some are reused from https://github.com/AkariAsai/ATTEMPT/blob/main/attempt/metrics/metrics.py
+
+
+def string_to_float(string, default=-1.0):
+    """Converts string to float, using default when conversion not possible."""
+    try:
+        return float(string)
+    except ValueError:
+        return default
 
 
 # compute a f1 score from a list of strings
@@ -97,3 +109,149 @@ class SquadMetric(Metric):
 
     def compute(self):
         return qa_metrics(self.targets, self.preds)
+
+
+class SpearmanCorrCoef(Metric):
+    def __init__(self):
+        super().__init__()
+        self.add_state("targets", default=[], dist_reduce_fx="cat")
+        self.add_state("preds", default=[], dist_reduce_fx="cat")
+
+    def update(self, preds, targets):
+        targets = [string_to_float(t) for t in targets]
+        preds = [string_to_float(p) for p in preds]
+
+        self.targets += targets
+        self.preds += preds
+
+    def compute(self):
+        spearman_corrcoef = 100 * scipy.stats.spearmanr(self.targets, self.preds)[0]
+
+        if math.isnan(spearman_corrcoef):
+            spearman_corrcoef = 0
+
+        return spearman_corrcoef
+
+
+class PearsonCorrCoef(Metric):
+    def __init__(self):
+        super().__init__()
+        self.add_state("targets", default=[], dist_reduce_fx="cat")
+        self.add_state("preds", default=[], dist_reduce_fx="cat")
+
+    def update(self, preds, targets):
+        targets = [string_to_float(t) for t in targets]
+        preds = [string_to_float(p) for p in preds]
+
+        self.targets += targets
+        self.preds += preds
+
+    def compute(self):
+        pearson_corrcoef = 100 * scipy.stats.pearsonr(self.targets, self.preds)[0]
+
+        if math.isnan(pearson_corrcoef):
+            pearson_corrcoef = 0
+
+        return pearson_corrcoef
+
+
+class MatthewCorrCoef(Metric):
+    def __init__(self):
+        super().__init__()
+        self.add_state("targets", default=[], dist_reduce_fx="cat")
+        self.add_state("preds", default=[], dist_reduce_fx="cat")
+
+    def update(self, preds, targets):
+        self.targets += targets
+        self.preds += preds
+
+    def compute(self):
+        return 100 * sklearn.metrics.matthews_corrcoef(self.targets, self.preds)
+
+
+class MeanMulticlassF1(Metric):
+    def __init__(self, num_classes):
+        super().__init__()
+        self.add_state("targets", default=[], dist_reduce_fx="cat")
+        self.add_state("preds", default=[], dist_reduce_fx="cat")
+
+        self.num_classes = num_classes
+
+    def update(self, preds, targets):
+        self.targets += targets
+        self.preds += preds
+
+    def compute(self):
+        return 100 * sklearn.metrics.fbeta_score(
+            self.targets,
+            self.preds,
+            beta=1,
+            labels=range(self.num_classes),
+            average="macro",
+        )
+
+
+class MultircF1(Metric):
+    def __init__(self):
+        super().__init__()
+        self.add_state("targets", default=[], dist_reduce_fx="cat")
+        self.add_state("preds", default=[], dist_reduce_fx="cat")
+
+        self.f1_score_with_invalid = F1ScoreWithInvalid()
+
+    def update(self, preds, targets):
+        self.targets += targets
+        self.preds += preds
+
+    def compute(self):
+        return self.f1_score_with_invalid(
+            [t["value"] for t in self.targets], [p["value"] for p in self.predictions]
+        )
+
+
+class ExactMatch(Metric):
+    def __init__(self, group_key="group", value_key="value"):
+        super().__init__()
+        self.add_state("targets", default=[], dist_reduce_fx="cat")
+        self.add_state("preds", default=[], dist_reduce_fx="cat")
+
+        self.group_key = group_key
+        self.value_key = value_key
+
+    def update(self, preds, targets):
+        self.targets += targets
+        self.preds += preds
+
+    def compute(self):
+        return 100 * float(np.array_equal(self.targets, self.preds))
+
+
+class MeanGroupMetric(Metric):
+    def __init__(self, metric_fn, group_key="group", value_key="value"):
+        super().__init__()
+        self.add_state("targets", default=[], dist_reduce_fx="cat")
+        self.add_state("preds", default=[], dist_reduce_fx="cat")
+
+        self.group_key = group_key
+        self.value_key = value_key
+        self.metric_fn = metric_fn()
+
+    def update(self, preds, targets):
+        self.targets += targets
+        self.preds += preds
+
+    def compute(self):
+        grouped_values = collections.defaultdict(lambda: ([], []))
+
+        for targ, pred in zip(self.targets, self.preds):
+            g = targ[self.group_key]
+            grouped_values[g][0].append(targ[self.value_key])
+            grouped_values[g][1].append(pred[self.value_key])
+
+        group_scores = collections.defaultdict(list)
+
+        for targets, preds in grouped_values.values():
+            for metric, score in self.metric_fn(targets, preds).items():
+                group_scores[metric].append(score)
+
+        return {metric: np.mean(scores) for metric, scores in group_scores.items()}
