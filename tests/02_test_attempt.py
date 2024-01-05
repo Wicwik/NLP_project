@@ -46,6 +46,8 @@ new_model = PeftModel.from_pretrained(new_model, cpeft_save).to("cuda")
 new_weights = new_model.prompt_encoder["peft"].embedding.weight.detach().cpu().numpy()
 
 assert str(model) == str(new_model), "Model is not the same after saving and loading."
-assert (new_weights == weights).all(), "Prompt embeddings must be the same after save and load."
+assert (
+    new_weights == weights
+).all(), "Prompt embeddings must be the same after save and load."
 
 utils.passed(__file__)

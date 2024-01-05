@@ -18,7 +18,7 @@ from tasks import AutoTask, TaskDataCollatorForSeq2Seq
 from trainer import Trainer
 
 
-class peft_training_pipeline:
+class PeftTraining:
     configs = None
     use_wandb = None
     metric_fs = None
