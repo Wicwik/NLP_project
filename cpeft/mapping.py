@@ -1,8 +1,15 @@
 from .model import PeftModelForSeq2SeqLM, PeftModel
 from .config import PeftConfig
 from .utils import _prepare_prompt_learning_config
+from .prompt_tuning import PromptTuningConfig
+from .attempt import AttemptConfig
 
 from transformers import PreTrainedModel
+
+PEFT_TYPE_TO_CONFIG_MAPPING = {
+    "prompt_tuning": PromptTuningConfig,
+    "attempt": AttemptConfig,
+}
 
 
 def get_peft_model(

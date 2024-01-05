@@ -18,7 +18,7 @@ from tasks import AutoTask, TaskDataCollatorForSeq2Seq
 from trainer import Trainer
 
 
-class peft_training_pipeline:
+class PeftTraining:
     configs = None
     use_wandb = None
     metric_fs = None
@@ -187,11 +187,21 @@ class peft_training_pipeline:
                 os.path.dirname(__file__), config["output_dir"]
             )
 
-            peft_config = PromptTuningConfig(
+            from cpeft.mapping import PEFT_TYPE_TO_CONFIG_MAPPING
+
+            peft_config = PEFT_TYPE_TO_CONFIG_MAPPING[config["peft_type"]](
                 task_type=config["task_type"],
                 num_virtual_tokens=config["num_virtual_tokens"],
                 prompt_init=config["prompt_init"],
             )
+
+            if config["peft_type"] == "attempt":
+                peft_config.prompt_init_embedding = config["prompt_init_embedding"]
+                peft_config.prompt_embedding_paths = config["prompt_embedding_paths"]
+                peft_config.attn_method = config["attn_method"]
+                peft_config.prefix_num = config["prefix_num"]
+                peft_config.temperature = config["temperature"]
+
             # peft_config = PromptTuningConfig(task_type=TaskType.SEQ_2_SEQ_LM, num_virtual_tokens=config["num_virtual_tokens"])
 
             for nr in range(config["n_runs"]):
@@ -203,6 +213,14 @@ class peft_training_pipeline:
                     config["model_name_or_path"]
                 )
                 model = get_peft_model(model, peft_config)
+
+                # pretrained_attempt = torch.load(os.path.join(config["output_dir"], "attempt_original/MNLI/adapter_model.bin"))
+                # print(pretrained_attempt, pretrained_attempt.size())
+                # print(model.prompt_encoder.peft.embedding.weight)
+
+                # model.prompt_encoder.peft.embedding.weight = pretrained_attempt
+                # print(model.prompt_encoder.peft.embedding.weight)
+
                 model.print_trainable_parameters()
                 model.to(config["device"])
                 config["timestamp"] = datetime.now().strftime("%m%d%Y%H%M%S")

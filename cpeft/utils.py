@@ -2,7 +2,7 @@ import torch
 
 from typing import Optional
 
-from .config import PeftConfig
+from cpeft import PeftConfig
 
 
 def _prepare_prompt_learning_config(peft_config: PeftConfig, model_config):

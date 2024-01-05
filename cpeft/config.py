@@ -3,6 +3,8 @@ from typing import Optional, Dict
 
 from transformers.utils import PushToHubMixin
 
+import os, json
+
 
 @dataclass
 class PeftConfig(PushToHubMixin):
@@ -15,3 +17,59 @@ class PeftConfig(PushToHubMixin):
     peft_type: Optional[str] = field(default=None, metadata={"help": "Peft type"})
     task_type: Optional[str] = field(default=None, metadata={"help": "Task type"})
     inference_mode: bool = field(default=False, metadata={"help": "Inference mode"})
+
+    def save_pretrained(self, save_directory):
+        if os.path.isfile(save_directory):
+            raise ValueError(f"{save_directory} is not a directory.")
+
+        os.makedirs(save_directory, exist_ok=True)
+
+        output_dict = asdict(self)
+        output_path = os.path.join(save_directory, "adapter_config.json")
+
+        with open(output_path, "w") as writer:
+            writer.write(json.dumps(output_dict, indent=2, sort_keys=True))
+
+    @classmethod
+    def from_pretrained(cls, pretrained_model_name_or_path):
+        path = pretrained_model_name_or_path
+
+        config_file = os.path.join(path, "adapter_config.json")
+
+        loaded_attributes = cls.from_json_file(config_file)
+
+        if "peft_type" in loaded_attributes:
+            peft_type = loaded_attributes["peft_type"]
+
+            from .mapping import PEFT_TYPE_TO_CONFIG_MAPPING
+
+            config_cls = PEFT_TYPE_TO_CONFIG_MAPPING[peft_type]
+        else:
+            config_cls = cls
+
+        config = config_cls()
+
+        for key, value in loaded_attributes.items():
+            if hasattr(config, key):
+                setattr(config, key, value)
+
+        return config
+
+    @classmethod
+    def _get_peft_type(cls, model_id):
+        path = model_id
+        config_file = os.path.join(path, "adapter_config.json")
+
+        loaded_attributes = cls.from_json_file(config_file)
+        return loaded_attributes["peft_type"]
+
+    @classmethod
+    def from_json_file(cls, path_json_file):
+        with open(path_json_file, "r") as file:
+            json_object = json.load(file)
+
+        return json_object
+
+    @property
+    def is_prompt_learning(self):
+        return False
