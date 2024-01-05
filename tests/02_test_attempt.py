@@ -34,7 +34,6 @@ cpeft_config = AttemptConfig(
 
 model = AutoModelForSeq2SeqLM.from_pretrained("t5-base")
 model = get_peft_model(model, cpeft_config).to("cuda")
-
 weights = model.prompt_encoder["peft"].embedding.weight.detach().cpu().numpy()
 
 model.print_trainable_parameters()

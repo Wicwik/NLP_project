@@ -9,6 +9,7 @@ class AttemptModule(torch.nn.Module):
     def store_prefix_weights(self, prefix_embeddings):
         embeddings = torch.stack(prefix_embeddings)
         self.mul_prefix_emb.data = embeddings.clone().detach()
+        self.mul_prefix_emb.requires_grad = False
 
 
 class AttemptSubModule(AttemptModule):
@@ -36,7 +37,13 @@ class AttemptSubModule(AttemptModule):
 
     def forward(self, inputs_embeds, prefix_emb):
         avg_inputs_embeds, _ = torch.max(inputs_embeds, 1)
-        target_prompts = prefix_emb.repeat(inputs_embeds.shape[0], 1, 1)
+        target_prompts = prefix_emb
+        # print(prefix_emb.size(), inputs_embeds.shape)
+        # print(target_prompts.size())
+        # print(self.mul_prefix_emb.repeat(inputs_embeds.shape[0], 1, 1, 1).size())
+        # print(target_prompts.unsqueeze(1).size())
+        # exit(0)
+
         mul_prefix_emb_added = torch.cat(
             (
                 self.mul_prefix_emb.repeat(inputs_embeds.shape[0], 1, 1, 1),
@@ -58,8 +65,6 @@ class AttemptSubModule(AttemptModule):
             "bp, bpld -> bld", normalized_attn_scores, mul_prefix_emb_added
         )
 
-        soft_prompts = soft_prompts + prefix_emb.unsqueeze(0).repeat(
-            inputs_embeds.shape[0], 1, 1
-        )
+        soft_prompts = soft_prompts + prefix_emb.unsqueeze(0)
 
-        return soft_prompts
+        return soft_prompts.squeeze(0)

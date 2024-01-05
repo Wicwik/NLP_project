@@ -140,7 +140,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
     def get_nb_trainable_parameters(self):
         trainable_params = 0
         all_param = 0
-        for _, param in self.named_parameters():
+        for n, param in self.named_parameters():
             num_params = param.numel()
             if num_params == 0 and hasattr(param, "ds_numel"):
                 num_params = param.ds_numel
@@ -150,6 +150,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
             all_param += num_params
             if param.requires_grad:
+                # print(n, param)
                 trainable_params += num_params
 
         return trainable_params, all_param
@@ -363,6 +364,9 @@ class PeftModelForSeq2SeqLM(PeftModel):
             prompts = self.get_instance_prompt(inputs_embeds, prompts)
 
         prompts = prompts.to(inputs_embeds.dtype)
+        # print(prompts[:, : peft_config.num_virtual_tokens].shape)
+        # print(inputs_embeds.shape)
+
         inputs_embeds = torch.cat(
             (prompts[:, : peft_config.num_virtual_tokens], inputs_embeds), dim=1
         )
@@ -389,6 +393,10 @@ class PeftModelForSeq2SeqLM(PeftModel):
         inputs_embeds = self.word_embeddings(input_ids)
         batch_size = inputs_embeds.shape[0]
         prompts = self.get_prompt(batch_size=batch_size)
+
+        if peft_config.peft_type == "attempt":
+            prompts = self.get_instance_prompt(inputs_embeds, prompts)
+
         prompts = prompts.to(inputs_embeds.dtype)
 
         inputs_embeds = torch.cat(
