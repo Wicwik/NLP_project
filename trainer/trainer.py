@@ -90,7 +90,7 @@ class Trainer:
                 preds.cpu(), batch["labels"].cpu(), self.tokenizer, self.config, "train"
             )
 
-            print(metrics)
+            # print(metrics)
 
             loss.backward()
             self.optimizer.step()
