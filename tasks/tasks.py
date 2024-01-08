@@ -227,8 +227,8 @@ class MRPC(AbstractTask):
 class COLA(AbstractTask):
     name = "cola"
     labels_list = ["0", "1"]
-    metrics = [MatthewCorrCoef]
-    metric_names = ["matthews_correlation"]
+    metrics = [MatthewCorrCoef, Accuracy]
+    metric_names = ["matthews_correlation", "accuracy"]
     split_to_data_split = {
         "train": "train",
         "validation": "validation",
@@ -400,8 +400,8 @@ class STSB(AbstractTask):
     name = "stsb"
     labels_list = [str(np.round(label, decimals=1)) for label in np.arange(0, 5.2, 0.2)]
 
-    metrics = [PearsonCorrCoef, SpearmanCorrCoef]
-    metric_names = ["pearsonr", "spearmanr"]
+    metrics = [PearsonCorrCoef, SpearmanCorrCoef, Accuracy]
+    metric_names = ["pearsonr", "spearmanr", "accuracy"]
     split_to_data_split = {
         "train": "train",
         "validation": "validation",
