@@ -236,6 +236,8 @@ class PeftTraining:
                     model_max_length=512,
                     use_fast=True,
                 )
+                model.resize_token_embeddings(len(tokenizer))
+
                 if tokenizer.pad_token_id is None:
                     tokenizer.pad_token_id = tokenizer.eos_token_id
 

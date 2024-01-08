@@ -99,7 +99,7 @@ class Trainer:
             self.optimizer.zero_grad()
 
         metrics = self.compute_metrics_all("train")
-        metrics.update({"train_loss": train_loss / len(self.train_dataloader)})
+        metrics.update({"train_loss": train_loss.cpu() / len(self.train_dataloader)})
         metrics.update({"train_ppl": torch.exp(metrics["train_loss"])})
 
         self.reset_metrics()
@@ -139,7 +139,7 @@ class Trainer:
                 )
 
         metrics = self.compute_metrics_all("valid")
-        metrics.update({"valid_loss": valid_loss / len(self.valid_dataloader)})
+        metrics.update({"valid_loss": valid_loss.cpu() / len(self.valid_dataloader)})
         metrics.update({"valid_ppl": torch.exp(metrics["valid_loss"])})
 
         self.reset_metrics()
@@ -180,7 +180,7 @@ class Trainer:
             )
 
         metrics = self.compute_metrics_all("test")
-        metrics.update({"test_loss": valid_loss / len(self.test_dataloader)})
+        metrics.update({"test_loss": valid_loss.cpu() / len(self.test_dataloader)})
         metrics.update({"test_ppl": torch.exp(metrics["test_loss"])})
 
         self.reset_metrics()
@@ -213,10 +213,12 @@ class Trainer:
             wandb.log(self.metrics)
             print(f"{epoch=},", self.metrics)
 
-        self.metrics.update(self.test())
+        test_metrics = self.test()
+        self.metrics.update(test_metrics)
 
-        wandb.log(self.metrics)
-        print("Test: ", self.metrics)
+        wandb.log(test_metrics)
+        print("Test: ", test_metrics)
+        print("Run metrics: ", self.metrics)
 
         if self.wandb_run:
             self.wandb_run.finish()

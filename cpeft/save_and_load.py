@@ -30,12 +30,16 @@ def set_peft_model_state_dict(model, peft_state_dict, adapter_name="peft"):
     state_dict = peft_state_dict
 
     peft_model_state_dict = state_dict
+    # print(peft_model_state_dict)
 
     load_result = model.load_state_dict(peft_model_state_dict, strict=False)
     if config.is_prompt_learning:
         model.prompt_encoder[adapter_name].embedding.load_state_dict(
             {"weight": peft_model_state_dict["prompt_embeddings"]}, strict=True
         )
+
+        if config.peft_type == "attempt":
+            model.attention_module.load_state_dict(peft_model_state_dict["attention_module"])
 
     return load_result
 
