@@ -478,7 +478,7 @@ class SuperGLUEMultiRC(AbstractTask):
         "test": "validation",
     }
     metrics = [
-        MultircF1,
+        F1ScoreWithInvalid,
         MeanGroupMetric,
     ]
     metric_names = ["f1", "em"]
