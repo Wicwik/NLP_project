@@ -87,7 +87,12 @@ class Trainer:
             loss = outputs.loss
             train_loss += loss.detach().float()
             metrics = self.compute_metrics(
-                preds.cpu(), batch["labels"].cpu(), self.tokenizer, self.config, "train"
+                preds.cpu(),
+                batch["labels"].cpu(),
+                self.tokenizer,
+                self.config,
+                "train",
+                batch["extra_fields"],
             )
 
             # print(metrics)
@@ -136,6 +141,7 @@ class Trainer:
                     self.tokenizer,
                     self.config,
                     "valid",
+                    batch["extra_fields"],
                 )
 
         metrics = self.compute_metrics_all("valid")
@@ -176,7 +182,12 @@ class Trainer:
             loss = outputs.loss
             valid_loss += loss.detach().float()
             metrics = self.compute_metrics(
-                preds.cpu(), batch["labels"].cpu(), self.tokenizer, self.config, "test"
+                preds.cpu(),
+                batch["labels"].cpu(),
+                self.tokenizer,
+                self.config,
+                "test",
+                batch["extra_fields"],
             )
 
         metrics = self.compute_metrics_all("test")

@@ -478,7 +478,7 @@ class SuperGLUEMultiRC(AbstractTask):
         "test": "validation",
     }
     metrics = [
-        F1ScoreWithInvalid,
+        MultircF1,
         MeanGroupMetric,
     ]
     metric_names = ["f1", "em"]
@@ -491,6 +491,19 @@ class SuperGLUEMultiRC(AbstractTask):
         text = re.sub("<br>", " ", text)
         text = re.sub("<(/)?b>", "", text)
         return text
+
+    def postprocessor(self, preds, labels, tokenizer, ignore_pad_token_for_loss, info):
+        preds, labels = super().postprocessor(
+            preds, preds, labels, tokenizer, ignore_pad_token_for_loss, info
+        )
+        preds = [
+            {"group": info["group"], "value": pred} for info, pred in zip(info, preds)
+        ]
+        labels = [
+            {"group": info["group"], "value": label}
+            for info, label in zip(info, labels)
+        ]
+        return preds, labels
 
     def preprocessor(self, example, add_prefix=True):
         group = example["idx"]["question"]
@@ -629,6 +642,13 @@ class SuperGLUERecord(AbstractTask):
             )
 
         return new_batch
+
+    def postprocessor(self, preds, labels, tokenizer, ignore_pad_token_for_loss, info):
+        preds, labels = super().postprocessor(
+            preds, labels, tokenizer, ignore_pad_token_for_loss, info
+        )
+        labels = [info["answers"] for info in info]
+        return preds, labels
 
     def map_dataset(self, dataset, add_prefix=True):
         return dataset.map(
