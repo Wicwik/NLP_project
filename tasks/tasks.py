@@ -21,7 +21,6 @@ from metrics import (
     MeanMulticlassF1,
     MultircF1,
     MeanGroupMetric,
-    ExactMatch,
 )
 
 from utils import pad_punctuation, round_stsb_target
@@ -480,7 +479,7 @@ class SuperGLUEMultiRC(AbstractTask):
     }
     metrics = [
         MultircF1,
-        MeanGroupMetric(ExactMatch),
+        MeanGroupMetric,
     ]
     metric_names = ["f1", "em"]
 
@@ -728,41 +727,30 @@ class PAWS(AbstractTask):
 
 TASK_MAPPING = OrderedDict(
     [
-        # TODO implment all
         ("squad", Squad),
         ("mrpc", MRPC),
         ("cola", COLA),
         ("sst2", SST2),
         ("qnli", QNLI),
         ("rte", RTE),
-        # ('wnli', WNLI),
         ("mnli", MNLI),
         ("mnli_txt", MNLITXT),
         ("qqp", QQP),
         ("stsb", STSB),
         ("superglue-boolq", SuperGLUEBoolQ),
-        # ('superglue-rte', SuperGLUERTE),
         ("superglue-cb", SuperGLUECB),
-        # ('superglue-copa', SuperGLUECOPA),
         ("superglue-multirc", SuperGLUEMultiRC),
         ("superglue-wic", SuperGLUEWIC),
         ("superglue-wsc.fixed", SuperGLUEWSCFixed),
         ("superglue-record", SuperGLUERecord),
-        # ('multi_nli', MultiNLI),
-        # ('snli', SNLI),
-        # ('piqa', PIQA),
-        # ('drop', DROP),
         ("newsqa", Squad),
         ("searchqa", Squad),
         ("triviaqa", Squad),
         ("nq", Squad),
         ("hotpotqa", Squad),
-        # ("social_i_qa", SocialIQA),
-        # ("commonsense_qa", CommonsenseQA),
         ("winogrande", WinoGrande),
         ("scitail", SciTail),
         ("yelp_polarity", YelpPolarity),
-        # ('amazon_polarity', Amazon_Polarity),
         ("paws", PAWS),
     ]
 )

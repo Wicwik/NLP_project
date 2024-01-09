@@ -227,14 +227,14 @@ class ExactMatch(Metric):
 
 
 class MeanGroupMetric(Metric):
-    def __init__(self, metric_fn, group_key="group", value_key="value"):
+    def __init__(self, group_key="group", value_key="value"):
         super().__init__()
         self.add_state("targets", default=[], dist_reduce_fx="cat")
         self.add_state("preds", default=[], dist_reduce_fx="cat")
 
         self.group_key = group_key
         self.value_key = value_key
-        self.metric_fn = metric_fn()
+        self.metric_fn = ExactMatch()
 
     def update(self, preds, targets):
         self.targets += targets
