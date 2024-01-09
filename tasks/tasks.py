@@ -593,9 +593,9 @@ class SuperGLUEWSCFixed(AbstractTask):
             example["span1_index"] < example["span2_index"]
         )
         text = self._mark_span(text, example["span2_text"], span2_index, "#")
-        src_texts = ["text:", text]
-        tgt_texts = [str(example["label"])]
-        return self.formater(self.name, src_texts, tgt_texts, add_prefix)
+        input_texts = ["text:", text]
+        label_texts = [str(example["label"])]
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
 
 
 class SuperGLUERecord(AbstractTask):
@@ -639,6 +639,93 @@ class SuperGLUERecord(AbstractTask):
         )
 
 
+class WinoGrande(AbstractTask):
+    name = "winogrande"
+    labels_list = ["0", "1"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation",
+        "test": "validation",
+    }
+    metric = [Accuracy]
+    metric_names = ["accuracy"]
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("winogrande", "winogrande_xl", split=split)
+
+    def preprocessor(self, example, add_prefix=True):
+        input_texts = [
+            "sentence:",
+            example["sentence"],
+            "option0:",
+            example["option1"],
+            "option1:",
+            example["option1"],
+        ]
+        label_texts = [str(int(example["answer"]) - 1)]
+
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
+
+
+class SciTail(AbstractTask):
+    name = "scitail"
+    labels_list = ["0", "1"]
+    metric = [Accuracy]
+    metric_names = ["accuracy"]
+    split_to_data_split = {"train": "train", "validation": "validation", "test": "test"}
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("scitail", "snli_format", split=split)
+
+    def preprocessor(self, example, add_prefix=True):
+        label2id = {"entailment": "0", "neutral": "1"}
+        input_texts = [
+            "premise:",
+            example["sentence1"],
+            "hypothesis:",
+            example["sentence2"],
+        ]
+        label_texts = [label2id[example["gold_label"]]]
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
+
+
+class YelpPolarity(AbstractTask):
+    name = "yelp_polarity"
+    labels_list = ["0", "1"]
+    metric = [Accuracy]
+    metric_names = ["accuracy"]
+    split_to_data_split = {"train": "train", "test": "test"}
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("yelp_polarity")[split]
+
+    def preprocessor(self, example, add_prefix=True):
+        input_texts = ["sentence:", example["text"]]
+        label_texts = [str(example["label"])]
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
+
+
+class PAWS(AbstractTask):
+    name = "paws"
+    labels_list = ["0", "1"]
+    metric = [Accuracy]
+    metric_names = ["accuracy"]
+    split_to_data_split = {"train": "train", "validation": "validation", "test": "test"}
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("paws", "labeled_final", split=split)
+
+    def preprocessor(self, example, add_prefix=True):
+        input_texts = [
+            "sentence1:",
+            example["sentence1"],
+            "sentence2:",
+            example["sentence2"],
+        ]
+        label_texts = [str(example["label"])]
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
+
+
 TASK_MAPPING = OrderedDict(
     [
         # TODO implment all
@@ -665,18 +752,18 @@ TASK_MAPPING = OrderedDict(
         # ('snli', SNLI),
         # ('piqa', PIQA),
         # ('drop', DROP),
-        # ('newsqa', Squad),
-        # ('searchqa', Squad),
-        # ('triviaqa', Squad),
-        # ('nq', Squad),
-        # ('hotpotqa', Squad),
+        ("newsqa", Squad),
+        ("searchqa", Squad),
+        ("triviaqa", Squad),
+        ("nq", Squad),
+        ("hotpotqa", Squad),
         # ("social_i_qa", SocialIQA),
         # ("commonsense_qa", CommonsenseQA),
-        # ("winogrande", WinoGrande),
-        # ("scitail", SciTail),
-        # ('yelp_polarity', YelpPolarity),
+        ("winogrande", WinoGrande),
+        ("scitail", SciTail),
+        ("yelp_polarity", YelpPolarity),
         # ('amazon_polarity', Amazon_Polarity),
-        # ('paws', PAWS),
+        ("paws", PAWS),
     ]
 )
 
