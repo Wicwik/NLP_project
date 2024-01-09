@@ -78,10 +78,11 @@ class PeftTraining:
                 max_target_length=max_target_length,
             ),
             batched=True,
-            remove_columns=cols_to_remove,
             load_from_cache_file=False,
             desc="Running preprocess_function on train_dataset",
         )
+
+        train_dataset = train_dataset.remove_columns(cols_to_remove)
 
         valid_dataset = AutoTask.get(config["datasets"][0], config).get(
             split="validation",
@@ -99,10 +100,11 @@ class PeftTraining:
                 max_target_length=max_target_length,
             ),
             batched=True,
-            remove_columns=cols_to_remove,
             load_from_cache_file=False,
             desc="Running preprocess_function on valid_dataset",
         )
+
+        valid_dataset = valid_dataset.remove_columns(cols_to_remove)
 
         test_dataset = AutoTask.get(config["datasets"][0], config).get(
             split="test",
@@ -118,10 +120,11 @@ class PeftTraining:
                 max_target_length=max_target_length,
             ),
             batched=True,
-            remove_columns=cols_to_remove,
             load_from_cache_file=False,
             desc="Running preprocess_function on test_dataset",
         )
+
+        test_dataset = test_dataset.remove_columns(cols_to_remove)
 
         data_collator = TaskDataCollatorForSeq2Seq(tokenizer)
 
