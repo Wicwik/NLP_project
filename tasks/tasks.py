@@ -451,7 +451,7 @@ class SuperGLUECB(AbstractTask):
         "validation": "validation",
         "test": "validation",
     }
-    metrics = [MeanMulticlassF1(num_classes=3), Accuracy]
+    metrics = [MeanMulticlassF1, Accuracy]
     metric_names = ["f1_multiclass", "accuracy"]
 
     def load_dataset(self, split):
@@ -496,7 +496,7 @@ class SuperGLUEMultiRC(AbstractTask):
         self, preds, labels, tokenizer, ignore_pad_token_for_loss, data_info
     ):
         preds, labels = super().postprocessor(
-            preds, preds, labels, tokenizer, ignore_pad_token_for_loss, data_info
+            preds, labels, tokenizer, ignore_pad_token_for_loss, data_info
         )
         preds = [
             {"group": info["group"], "value": pred}

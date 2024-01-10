@@ -170,12 +170,12 @@ class MatthewCorrCoef(Metric):
 
 
 class MeanMulticlassF1(Metric):
-    def __init__(self, num_classes):
+    def __init__(self):
         super().__init__()
         self.add_state("targets", default=[], dist_reduce_fx="cat")
         self.add_state("preds", default=[], dist_reduce_fx="cat")
 
-        self.num_classes = num_classes
+        self.num_classes = 3
 
     def update(self, preds, targets):
         self.targets += targets
@@ -204,9 +204,9 @@ class MultircF1(Metric):
         self.preds += preds
 
     def compute(self):
-        print(self.targets)
+        # print(self.targets)
         return self.f1_score_with_invalid(
-            [t["value"] for t in self.targets], [p["value"] for p in self.predictions]
+            [p["value"] for p in self.preds], [t["value"] for t in self.targets]
         )
 
 
@@ -224,7 +224,7 @@ class ExactMatch(Metric):
         self.preds += preds
 
     def compute(self):
-        return 100 * float(np.array_equal(self.targets, self.preds))
+        return {"em": 100 * float(np.array_equal(self.targets, self.preds))}
 
 
 class MeanGroupMetric(Metric):
