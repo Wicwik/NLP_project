@@ -82,7 +82,7 @@ class AbstractTask:
         self.formater = AutoType.get(self.config["task_type"]).formater
 
     def postprocessor(
-        self, preds, labels, tokenizer, ignore_pad_token_for_loss, info=None
+        self, preds, labels, tokenizer, ignore_pad_token_for_loss, data_info=None
     ):
         decoded_preds = tokenizer.batch_decode(preds, skip_special_tokens=True)
         if ignore_pad_token_for_loss:
@@ -492,16 +492,19 @@ class SuperGLUEMultiRC(AbstractTask):
         text = re.sub("<(/)?b>", "", text)
         return text
 
-    def postprocessor(self, preds, labels, tokenizer, ignore_pad_token_for_loss, info):
+    def postprocessor(
+        self, preds, labels, tokenizer, ignore_pad_token_for_loss, data_info
+    ):
         preds, labels = super().postprocessor(
-            preds, preds, labels, tokenizer, ignore_pad_token_for_loss, info
+            preds, preds, labels, tokenizer, ignore_pad_token_for_loss, data_info
         )
         preds = [
-            {"group": info["group"], "value": pred} for info, pred in zip(info, preds)
+            {"group": info["group"], "value": pred}
+            for info, pred in zip(data_info, preds)
         ]
         labels = [
             {"group": info["group"], "value": label}
-            for info, label in zip(info, labels)
+            for info, label in zip(data_info, labels)
         ]
         return preds, labels
 
@@ -643,11 +646,13 @@ class SuperGLUERecord(AbstractTask):
 
         return new_batch
 
-    def postprocessor(self, preds, labels, tokenizer, ignore_pad_token_for_loss, info):
+    def postprocessor(
+        self, preds, labels, tokenizer, ignore_pad_token_for_loss, data_info
+    ):
         preds, labels = super().postprocessor(
-            preds, labels, tokenizer, ignore_pad_token_for_loss, info
+            preds, labels, tokenizer, ignore_pad_token_for_loss, data_info
         )
-        labels = [info["answers"] for info in info]
+        labels = [info["answers"] for info in data_info]
         return preds, labels
 
     def map_dataset(self, dataset, add_prefix=True):

@@ -27,13 +27,12 @@ class PeftTraining:
         self.configs = configs
         self.use_wandb = use_wandb
 
-    def preprocess_function(self, examples, config, tokenizer, max_target_length):
+    def preprocess_function(
+        self, examples, config, tokenizer, max_target_length, task_id=None
+    ):
         inputs = tokenizer(
             examples["source"],
-            # text_target=examples["target"],
-            max_length=config[
-                "max_source_length"
-            ],  # probably bug we want have different token lenghts for targets
+            max_length=config["max_source_length"],
             padding=False,
             truncation=True,
         )
@@ -49,10 +48,13 @@ class PeftTraining:
         inputs["labels"] = labels["input_ids"]
         inputs["extra_fields"] = examples["extra_fields"]
 
+        if task_id is not None:
+            inputs["task_ids"] = [task_id for _ in examples["extra_fields"]]
+
         return inputs
 
-    def get_data(self, config, tokenizer, model, add_prefix=True):
-        cols_to_remove = ["source", "target", "extra_fields"]
+    def get_data(self, config, tokenizer, add_prefix=True):
+        cols_to_remove = ["source", "target"]
 
         max_target_length = AutoTask.get(
             config["datasets"][0], config
@@ -162,10 +164,15 @@ class PeftTraining:
             )
         }
 
-    def compute_metrics(self, preds, labels, tokenizer, config, prefix, info):
+    def compute_metrics(self, eval_preds, tokenizer, config, prefix):
+        preds, labels, data_info = eval_preds
         postprocessor = AutoTask.get(config["datasets"][0], config).postprocessor
         decoded_preds, decoded_labels = postprocessor(
-            preds, labels, tokenizer, ignore_pad_token_for_loss=True, info=info
+            preds,
+            labels,
+            tokenizer,
+            ignore_pad_token_for_loss=True,
+            data_info=data_info,
         )
 
         # print(decoded_preds, decoded_labels)
@@ -247,7 +254,7 @@ class PeftTraining:
                 trainer = Trainer(
                     model=model,
                     config=config,
-                    dataloaders=self.get_data(config, tokenizer, model),
+                    dataloaders=self.get_data(config, tokenizer),
                     optimizer=optimizer,
                     tokenizer=tokenizer,
                     metric_fs=self.metric_fs,

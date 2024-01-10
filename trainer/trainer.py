@@ -2,11 +2,16 @@ import torch
 import os
 import wandb
 
-from transformers import get_linear_schedule_with_warmup, AutoModelForSeq2SeqLM
+from transformers import (
+    get_linear_schedule_with_warmup,
+    AutoModelForSeq2SeqLM,
+)
 
 from cpeft import PeftModel
 
 from tqdm import tqdm
+
+from .utils import EvalPrediction
 
 
 class Trainer:
@@ -24,7 +29,11 @@ class Trainer:
         self.min_eval_loss = torch.inf
         self.model = model
         self.config = config
-        self.train_dataloader, self.valid_dataloader, self.test_dataloader = dataloaders
+        (
+            self.train_dataloader,
+            self.valid_dataloader,
+            self.test_dataloader,
+        ) = dataloaders
         self.optimizer = optimizer
         self.tokenizer = tokenizer
         self.metric_fs = metric_fs
@@ -68,6 +77,7 @@ class Trainer:
         train_loss = 0
         metrics = {}
         max_new_tokens = self.config["max_target_length"]
+        metric_key_prefix = "train"
 
         for _, batch in enumerate(tqdm(self.train_dataloader)):
             # batch = {k: v.to(config["device"]) for k, v in batch.items()}
@@ -87,12 +97,14 @@ class Trainer:
             loss = outputs.loss
             train_loss += loss.detach().float()
             metrics = self.compute_metrics(
-                preds.cpu(),
-                batch["labels"].cpu(),
+                EvalPrediction(
+                    predictions=preds,
+                    label_ids=batch["labels"],
+                    data_info=batch["extra_fields"],
+                ),
                 self.tokenizer,
                 self.config,
-                "train",
-                batch["extra_fields"],
+                metric_key_prefix,
             )
 
             # print(metrics)
@@ -103,9 +115,17 @@ class Trainer:
 
             self.optimizer.zero_grad()
 
-        metrics = self.compute_metrics_all("train")
-        metrics.update({"train_loss": train_loss.cpu() / len(self.train_dataloader)})
-        metrics.update({"train_ppl": torch.exp(metrics["train_loss"])})
+        metrics = self.compute_metrics_all(metric_key_prefix)
+        metrics.update(
+            {f"{metric_key_prefix}_loss": train_loss.cpu() / len(self.train_dataloader)}
+        )
+        metrics.update(
+            {
+                f"{metric_key_prefix}_ppl": torch.exp(
+                    metrics[f"{metric_key_prefix}_loss"]
+                )
+            }
+        )
 
         self.reset_metrics()
 
@@ -116,6 +136,7 @@ class Trainer:
         valid_loss = 0
         metrics = {}
         max_new_tokens = self.config["max_target_length"]
+        metric_key_prefix = "valid"
 
         with torch.no_grad():
             for _, batch in enumerate(tqdm(self.valid_dataloader)):
@@ -136,17 +157,27 @@ class Trainer:
                 loss = outputs.loss
                 valid_loss += loss.detach().float()
                 metrics = self.compute_metrics(
-                    preds.cpu(),
-                    batch["labels"].cpu(),
+                    EvalPrediction(
+                        predictions=preds,
+                        label_ids=batch["labels"],
+                        data_info=batch["extra_fields"],
+                    ),
                     self.tokenizer,
                     self.config,
-                    "valid",
-                    batch["extra_fields"],
+                    metric_key_prefix,
                 )
 
-        metrics = self.compute_metrics_all("valid")
-        metrics.update({"valid_loss": valid_loss.cpu() / len(self.valid_dataloader)})
-        metrics.update({"valid_ppl": torch.exp(metrics["valid_loss"])})
+        metrics = self.compute_metrics_all(metric_key_prefix)
+        metrics.update(
+            {f"{metric_key_prefix}_loss": valid_loss.cpu() / len(self.valid_dataloader)}
+        )
+        metrics.update(
+            {
+                f"{metric_key_prefix}_ppl": torch.exp(
+                    metrics[f"{metric_key_prefix}_loss"]
+                )
+            }
+        )
 
         self.reset_metrics()
 
@@ -160,6 +191,7 @@ class Trainer:
         model.eval()
         valid_loss = 0
         metrics = {}
+        metric_key_prefix = "test"
 
         max_new_tokens = self.config["max_target_length"]
 
@@ -182,17 +214,27 @@ class Trainer:
             loss = outputs.loss
             valid_loss += loss.detach().float()
             metrics = self.compute_metrics(
-                preds.cpu(),
-                batch["labels"].cpu(),
+                EvalPrediction(
+                    predictions=preds,
+                    label_ids=batch["labels"],
+                    data_info=batch["extra_fields"],
+                ),
                 self.tokenizer,
                 self.config,
-                "test",
-                batch["extra_fields"],
+                metric_key_prefix,
             )
 
-        metrics = self.compute_metrics_all("test")
-        metrics.update({"test_loss": valid_loss.cpu() / len(self.test_dataloader)})
-        metrics.update({"test_ppl": torch.exp(metrics["test_loss"])})
+        metrics = self.compute_metrics_all(metric_key_prefix)
+        metrics.update(
+            {f"{metric_key_prefix}_loss": valid_loss.cpu() / len(self.test_dataloader)}
+        )
+        metrics.update(
+            {
+                f"{metric_key_prefix}_ppl": torch.exp(
+                    metrics[f"{metric_key_prefix}_loss"]
+                )
+            }
+        )
 
         self.reset_metrics()
 

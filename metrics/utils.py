@@ -68,6 +68,8 @@ def normalize_squad(answer):
 
 
 def qa_metrics(targets, predictions):
+    # print(targets, len(targets))
+    # print(predictions, len(predictions))
     if len(targets) != len(predictions):
         raise ValueError("Number of targets and predictions must match.")
     em = np.mean(
