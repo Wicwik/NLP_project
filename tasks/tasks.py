@@ -671,7 +671,7 @@ class WinoGrande(AbstractTask):
         "validation": "validation",
         "test": "validation",
     }
-    metric = [Accuracy]
+    metrics = [Accuracy]
     metric_names = ["accuracy"]
 
     def load_dataset(self, split):
@@ -694,7 +694,7 @@ class WinoGrande(AbstractTask):
 class SciTail(AbstractTask):
     name = "scitail"
     labels_list = ["0", "1"]
-    metric = [Accuracy]
+    metrics = [Accuracy]
     metric_names = ["accuracy"]
     split_to_data_split = {"train": "train", "validation": "validation", "test": "test"}
 
@@ -716,7 +716,7 @@ class SciTail(AbstractTask):
 class YelpPolarity(AbstractTask):
     name = "yelp_polarity"
     labels_list = ["0", "1"]
-    metric = [Accuracy]
+    metrics = [Accuracy]
     metric_names = ["accuracy"]
     split_to_data_split = {"train": "train", "test": "test"}
 
@@ -732,7 +732,7 @@ class YelpPolarity(AbstractTask):
 class PAWS(AbstractTask):
     name = "paws"
     labels_list = ["0", "1"]
-    metric = [Accuracy]
+    metrics = [Accuracy]
     metric_names = ["accuracy"]
     split_to_data_split = {"train": "train", "validation": "validation", "test": "test"}
 
