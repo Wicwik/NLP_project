@@ -45,7 +45,7 @@ new_model = PeftModel.from_pretrained(new_model, cpeft_save).to("cuda")
 new_weights = new_model.prompt_encoder["peft"].embedding.weight.detach().cpu().numpy()
 
 # print(str(new_model._peft_config) == str(model._peft_config))
-# print(model)
+print(model)
 
 assert str(model) == str(new_model), "Model is not the same after saving and loading."
 assert (
