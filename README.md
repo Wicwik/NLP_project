@@ -13,3 +13,5 @@ python run.py [config]
 
 ### References
 ASAI, Akari, et al. [Attempt: Parameter-efficient multi-task tuning via attentional mixtures of soft prompts](https://aclanthology.org/2022.emnlp-main.446.pdf). In: Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing. 2022. p. 6655-6672.
+
+MANGRULKAR, Sourab, et al. [PEFT: State-of-the-art Parameter-Efficient Fine-Tuning methods](https://github.com/huggingface/peft). 2022.
