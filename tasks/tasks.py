@@ -76,7 +76,7 @@ class AbstractTask:
     ]
 
     def __init__(self, config, seed=42):
-        self.dataset_config_name = config["dataset_config_name"][0]
+        self.dataset_config_name = "en"
         self.config = config
         self.seed = seed
         self.formater = AutoType.get(self.config["task_type"]).formater
@@ -617,6 +617,11 @@ class SuperGLUERecord(AbstractTask):
     name = "superglue-record"
     metrics = [SquadMetric]
     metric_names = ["SquadMetric"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation",
+        "test": "validation",
+    }
 
     def load_dataset(self, split):
         return datasets.load_dataset("super_glue", "record", split=split)

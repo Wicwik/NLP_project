@@ -56,44 +56,70 @@ class PeftTraining:
     def get_data(self, config, tokenizer, add_prefix=True):
         cols_to_remove = ["source", "target"]
 
-        max_target_length = AutoTask.get(
-            config["datasets"][0], config
-        ).get_max_target_length(
-            tokenizer, default_max_length=config["max_target_length"]
-        )
+        max_target_lengths = [
+            AutoTask.get(dataset_name, config).get_max_target_length(
+                tokenizer, default_max_length=config["max_target_length"]
+            )
+            for dataset_name in config["datasets"]
+        ]
 
-        config["max_target_length"] = max_target_length
+        config["max_target_length"] = torch.max(max_target_lengths)
 
-        train_dataset = AutoTask.get(config["datasets"][0], config).get(
-            split="train",
-            split_validation_test=config["split_validation_test"],
-            add_prefix=True,
-            n_obs=config["max_train_samples"]
-            if "max_train_samples" in config
-            else None,
-        )
-        train_dataset = train_dataset.map(
-            functools.partial(
-                self.preprocess_function,
-                config=config,
-                tokenizer=tokenizer,
-                max_target_length=max_target_length,
-            ),
-            batched=True,
-            load_from_cache_file=False,
-            desc="Running preprocess_function on train_dataset",
-        )
+        train_datasets = [
+            AutoTask.get(dataset_name, config).get(
+                split="train",
+                split_validation_test=config["split_validation_test"],
+                add_prefix=True,
+                n_obs=config["max_train_samples"]
+                if "max_train_samples" in config
+                else None,
+            )
+            for dataset_name in config["datasets"]
+        ]
 
-        train_dataset = train_dataset.remove_columns(cols_to_remove)
+        for i, train_dataset in enumerate(train_datasets):
+            if config["shared_attn"] is True:
+                train_datasets[i] = train_datasets[i].map(
+                    functools.partial(
+                        self.preprocess_function,
+                        config=config,
+                        tokenizer=tokenizer,
+                        max_target_length=max_target_lengths[i],
+                        task_id=i,
+                    ),
+                    batched=True,
+                    load_from_cache_file=False,
+                    desc="Running preprocess_function on train_dataset",
+                )
+            else:
+                train_datasets[i] = train_datasets[i].map(
+                    functools.partial(
+                        self.preprocess_function,
+                        config=config,
+                        tokenizer=tokenizer,
+                        max_target_length=max_target_lengths[i],
+                    ),
+                    batched=True,
+                    load_from_cache_file=False,
+                    desc="Running preprocess_function on train_dataset",
+                )
 
-        valid_dataset = AutoTask.get(config["datasets"][0], config).get(
-            split="validation",
-            split_validation_test=config["split_validation_test"],
-            add_prefix=True,
-            n_obs=config["max_valid_samples"]
-            if "max_valid_samples" in config
-            else None,
-        )
+            train_datasets[i] = train_datasets[i].remove_columns(cols_to_remove)
+
+        train_dataset = self.concatenate_datasets(train_datasets)
+
+        valid_datasets = [
+            AutoTask.get(dataset_name, config).get(
+                split="validation",
+                split_validation_test=config["split_validation_test"],
+                add_prefix=True,
+                n_obs=config["max_valid_samples"]
+                if "max_valid_samples" in config
+                else None,
+            )
+            for dataset_name in config["datasets"]
+        ]
+
         valid_dataset = valid_dataset.map(
             functools.partial(
                 self.preprocess_function,
@@ -108,12 +134,18 @@ class PeftTraining:
 
         valid_dataset = valid_dataset.remove_columns(cols_to_remove)
 
-        test_dataset = AutoTask.get(config["datasets"][0], config).get(
-            split="test",
-            split_validation_test=config["split_validation_test"],
-            add_prefix=True,
-            n_obs=config["max_test_samples"] if "max_test_samples" in config else None,
-        )
+        test_datasets = [
+            AutoTask.get(dataset_name, config).get(
+                split="test",
+                split_validation_test=config["split_validation_test"],
+                add_prefix=True,
+                n_obs=config["max_test_samples"]
+                if "max_test_samples" in config
+                else None,
+            )
+            for dataset_name in config["datasets"]
+        ]
+
         test_dataset = test_dataset.map(
             functools.partial(
                 self.preprocess_function,
