@@ -11,6 +11,7 @@ from transformers import (
     AutoTokenizer,
     AutoModelForSeq2SeqLM,
 )
+from datasets import concatenate_datasets
 from torch.utils.data import DataLoader
 from datetime import datetime
 
@@ -106,10 +107,10 @@ class PeftTraining:
 
             train_datasets[i] = train_datasets[i].remove_columns(cols_to_remove)
 
-        train_dataset = self.concatenate_datasets(train_datasets)
+        train_dataset = concatenate_datasets(train_datasets)
 
-        valid_datasets = [
-            AutoTask.get(dataset_name, config).get(
+        valid_datasets = {
+            dataset_name: AutoTask.get(dataset_name, config).get(
                 split="validation",
                 split_validation_test=config["split_validation_test"],
                 add_prefix=True,
@@ -118,24 +119,39 @@ class PeftTraining:
                 else None,
             )
             for dataset_name in config["datasets"]
-        ]
+        }
 
-        valid_dataset = valid_dataset.map(
-            functools.partial(
-                self.preprocess_function,
-                config=config,
-                tokenizer=tokenizer,
-                max_target_length=max_target_length,
-            ),
-            batched=True,
-            load_from_cache_file=False,
-            desc="Running preprocess_function on valid_dataset",
-        )
+        for i, name in enumerate(valid_datasets):
+            if config["shared_attn"] is True:
+                valid_datasets[name] = valid_datasets[name].map(
+                    functools.partial(
+                        self.preprocess_function,
+                        config=config,
+                        tokenizer=tokenizer,
+                        max_target_length=max_target_lengths[i],
+                        task_id=i,
+                    ),
+                    batched=True,
+                    load_from_cache_file=False,
+                    desc="Running preprocess_function on valid_dataset",
+                )
+            else:
+                valid_datasets[name] = valid_datasets[name].map(
+                    functools.partial(
+                        self.preprocess_function,
+                        config=config,
+                        tokenizer=tokenizer,
+                        max_target_length=max_target_lengths[i],
+                    ),
+                    batched=True,
+                    load_from_cache_file=False,
+                    desc="Running preprocess_function on valid_dataset",
+                )
 
-        valid_dataset = valid_dataset.remove_columns(cols_to_remove)
+            valid_datasets[name] = valid_datasets[name].remove_columns(cols_to_remove)
 
-        test_datasets = [
-            AutoTask.get(dataset_name, config).get(
+        test_datasets = {
+            dataset_name: AutoTask.get(dataset_name, config).get(
                 split="test",
                 split_validation_test=config["split_validation_test"],
                 add_prefix=True,
@@ -144,21 +160,36 @@ class PeftTraining:
                 else None,
             )
             for dataset_name in config["datasets"]
-        ]
+        }
 
-        test_dataset = test_dataset.map(
-            functools.partial(
-                self.preprocess_function,
-                config=config,
-                tokenizer=tokenizer,
-                max_target_length=max_target_length,
-            ),
-            batched=True,
-            load_from_cache_file=False,
-            desc="Running preprocess_function on test_dataset",
-        )
+        for i, name in test_datasets:
+            if config["shared_attn"] is True:
+                test_datasets[name] = test_datasets[name].map(
+                    functools.partial(
+                        self.preprocess_function,
+                        config=config,
+                        tokenizer=tokenizer,
+                        max_target_length=max_target_lengths[i],
+                        task_id=i,
+                    ),
+                    batched=True,
+                    load_from_cache_file=False,
+                    desc="Running preprocess_function on test_dataset",
+                )
+            else:
+                test_datasets[name] = test_datasets[name].map(
+                    functools.partial(
+                        self.preprocess_function,
+                        config=config,
+                        tokenizer=tokenizer,
+                        max_target_length=max_target_lengths[i],
+                    ),
+                    batched=True,
+                    load_from_cache_file=False,
+                    desc="Running preprocess_function on test_dataset",
+                )
 
-        test_dataset = test_dataset.remove_columns(cols_to_remove)
+            test_datasets[name] = test_datasets[name].remove_columns(cols_to_remove)
 
         data_collator = TaskDataCollatorForSeq2Seq(tokenizer)
 
@@ -169,22 +200,30 @@ class PeftTraining:
             batch_size=config["batch_size"],
             pin_memory=True,
         )
-        valid_dataloader = DataLoader(
-            valid_dataset,
-            collate_fn=data_collator,
-            batch_size=config["batch_size"],
-            pin_memory=True,
-        )
-        test_dataloader = DataLoader(
-            test_dataset,
-            collate_fn=data_collator,
-            batch_size=config["batch_size"],
-            pin_memory=True,
-        )
 
-        # print(train_dataset)
+        valid_dataloaders = {
+            name: DataLoader(
+                valid_datasets[name],
+                collate_fn=data_collator,
+                batch_size=config["batch_size"],
+                pin_memory=True,
+            )
+            for name in valid_datasets
+        }
 
-        return train_dataloader, valid_dataloader, test_dataloader
+        test_dataloaders = {
+            name: DataLoader(
+                test_datasets[name],
+                collate_fn=data_collator,
+                batch_size=config["batch_size"],
+                pin_memory=True,
+            )
+            for name in test_datasets
+        }
+
+        print(train_dataset)
+
+        return train_dataloader, valid_dataloaders, test_dataloaders
 
     # create torchmetric metrics with their names
     def create_metric_fs(self, config):
