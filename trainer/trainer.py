@@ -182,7 +182,7 @@ class Trainer:
                         metric_key_prefix,
                     )
 
-            metrics = self.compute_metrics_all(metric_key_prefix)
+            metrics.update(self.compute_metrics_all(metric_key_prefix))
             metrics.update(
                 {f"{metric_key_prefix}_loss": valid_loss.cpu() / len(self.valid_dataloaders[task_name])}
             )
