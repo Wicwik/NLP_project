@@ -1,6 +1,6 @@
 import numpy as np
 from dataclasses import dataclass
-from transformers import DataCollatorForSeq2Seq
+from transformers import DataCollatorForSeq2Seq, DefaultDataCollator
 
 
 @dataclass
@@ -15,5 +15,15 @@ class TaskDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
         self.check_uniqueness(tasks)
         output = super().__call__(features)
         output["task"] = tasks[0]
+        output["extra_fields"] = extra_fields
+        return output
+
+
+@dataclass
+class ExtraDefaultDataCollator(DefaultDataCollator):
+    # datacollator for extra fields
+    def __call__(self, features):
+        extra_fields = [d.pop("extra_fields") for d in features]
+        output = super().__call__(features)
         output["extra_fields"] = extra_fields
         return output

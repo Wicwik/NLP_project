@@ -6,17 +6,16 @@ import os
 import torch
 
 # from peft import TaskType
-from cpeft import PromptTuningConfig, get_peft_model
+from cpeft import get_peft_model
 from transformers import (
     AutoTokenizer,
     AutoModelForSeq2SeqLM,
-    default_data_collator,
 )
 from datasets import concatenate_datasets
 from torch.utils.data import DataLoader
 from datetime import datetime
 
-from tasks import AutoTask, TaskDataCollatorForSeq2Seq
+from tasks import AutoTask, TaskDataCollatorForSeq2Seq, ExtraDefaultDataCollator
 from trainer import Trainer
 
 
@@ -32,10 +31,12 @@ class PeftTraining:
     def preprocess_function(
         self, examples, config, tokenizer, max_target_length, task_id=None
     ):
+        padding = "max_length" if config["pad_to_max_length"] else False
+
         inputs = tokenizer(
             examples["source"],
             max_length=config["max_source_length"],
-            padding=False,
+            padding=padding,
             truncation=True,
         )
 
@@ -43,9 +44,15 @@ class PeftTraining:
             labels = tokenizer(
                 examples["target"],
                 max_length=max_target_length,
-                padding=False,
+                padding=padding,
                 truncation=True,
             )
+
+        if padding == "max_length":
+            labels["input_ids"] = [
+                [(l if l != tokenizer.pad_token_id else -100) for l in label]
+                for label in labels["input_ids"]
+            ]
 
         inputs["labels"] = labels["input_ids"]
         inputs["extra_fields"] = examples["extra_fields"]
