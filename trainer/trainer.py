@@ -81,9 +81,8 @@ class Trainer:
                 count += 1
                 loss += metrics[n]
 
-        print(loss/count)
-        return loss/count
-
+        print(loss / count)
+        return loss / count
 
     def train(self):
         self.model.train()
@@ -159,32 +158,41 @@ class Trainer:
                     outputs = self.model(
                         input_ids=batch["input_ids"].to(self.config["device"]),
                         labels=batch["labels"].to(self.config["device"]),
-                        attention_mask=batch["attention_mask"].to(self.config["device"]),
+                        attention_mask=batch["attention_mask"].to(
+                            self.config["device"]
+                        ),
                     )
 
                     preds = self.model.generate(
                         input_ids=batch["input_ids"].to(self.config["device"]),
                         labels=batch["labels"].to(self.config["device"]),
-                        attention_mask=batch["attention_mask"].to(self.config["device"]),
+                        attention_mask=batch["attention_mask"].to(
+                            self.config["device"]
+                        ),
                         max_new_tokens=max_new_tokens,
                     )
 
                     loss = outputs.loss
                     valid_loss += loss.detach().float()
-                    metrics = self.compute_metrics(
-                        EvalPrediction(
-                            predictions=preds,
-                            label_ids=batch["labels"],
-                            data_info=batch["extra_fields"],
-                        ),
-                        self.tokenizer,
-                        self.config,
-                        metric_key_prefix,
+                    metrics.update(
+                        self.compute_metrics(
+                            EvalPrediction(
+                                predictions=preds,
+                                label_ids=batch["labels"],
+                                data_info=batch["extra_fields"],
+                            ),
+                            self.tokenizer,
+                            self.config,
+                            metric_key_prefix,
+                        )
                     )
 
             metrics.update(self.compute_metrics_all(metric_key_prefix))
             metrics.update(
-                {f"{metric_key_prefix}_loss": valid_loss.cpu() / len(self.valid_dataloaders[task_name])}
+                {
+                    f"{metric_key_prefix}_loss": valid_loss.cpu()
+                    / len(self.valid_dataloaders[task_name])
+                }
             )
             metrics.update(
                 {
@@ -218,7 +226,9 @@ class Trainer:
                     outputs = model(
                         input_ids=batch["input_ids"].to(self.config["device"]),
                         labels=batch["labels"].to(self.config["device"]),
-                        attention_mask=batch["attention_mask"].to(self.config["device"]),
+                        attention_mask=batch["attention_mask"].to(
+                            self.config["device"]
+                        ),
                     )
 
                 preds = model.generate(
@@ -243,7 +253,10 @@ class Trainer:
 
             metrics = self.compute_metrics_all(metric_key_prefix)
             metrics.update(
-                {f"{metric_key_prefix}_loss": valid_loss.cpu() / len(self.test_dataloaders[task_name])}
+                {
+                    f"{metric_key_prefix}_loss": valid_loss.cpu()
+                    / len(self.test_dataloaders[task_name])
+                }
             )
             metrics.update(
                 {
@@ -263,7 +276,7 @@ class Trainer:
             self.metrics.update(self.valid())
 
             valid_loss = self.get_avg_valid_loss(self.metrics)
-            if  valid_loss < self.min_eval_loss:
+            if valid_loss < self.min_eval_loss:
                 self.min_eval_loss = valid_loss
                 artifact_name = f"{'_'.join(self.config['datasets'])}_{self.config['timestamp']}_{self.config['run']}"
                 checkpoint_name = os.path.join(

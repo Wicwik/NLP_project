@@ -269,7 +269,7 @@ class PeftTraining:
                 result_m[f"{prefix}_em"] = m["em"]
                 result_m[f"{prefix}_f1"] = m["f1"]
             else:
-                result_m[n] = m
+                result_m[f"{prefix}_{n}"] = m
 
         return result_m
 
