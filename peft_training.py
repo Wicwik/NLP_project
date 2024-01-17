@@ -163,7 +163,7 @@ class PeftTraining:
             for dataset_name in config["datasets"]
         }
 
-        for i, name in test_datasets:
+        for i, name in enumerate(test_datasets):
             if config["shared_attn"] is True:
                 test_datasets[name] = test_datasets[name].map(
                     functools.partial(
