@@ -73,7 +73,7 @@ class PeftTraining:
         ]
 
         config["max_target_length"] = max(max_target_lengths)
-        print(config["max_target_length"])
+        print(config["max_target_length"], max_target_lengths)
 
         train_datasets = [
             AutoTask.get(dataset_name, config).get(
@@ -200,9 +200,9 @@ class PeftTraining:
             test_datasets[name] = test_datasets[name].remove_columns(cols_to_remove)
 
         if config["pad_to_max_length"]:
-            data_collator = default_data_collator
+            data_collator = ExtraDefaultDataCollator(return_tensors="pt")
         else:
-            data_collator = TaskDataCollatorForSeq2Seq(tokenizer)
+            data_collator = TaskDataCollatorForSeq2Seq(tokenizer, return_tensors="pt")
 
         train_dataloader = DataLoader(
             train_dataset,
