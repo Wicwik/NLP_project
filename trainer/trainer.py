@@ -108,16 +108,18 @@ class Trainer:
 
             loss = outputs.loss
             train_loss += loss.detach().float()
-            metrics.update(self.compute_metrics(
-                EvalPrediction(
-                    predictions=preds,
-                    label_ids=batch["labels"],
-                    data_info=batch["extra_fields"],
-                ),
-                self.tokenizer,
-                self.config,
-                metric_key_prefix,
-            ))
+            metrics.update(
+                self.compute_metrics(
+                    EvalPrediction(
+                        predictions=preds,
+                        label_ids=batch["labels"],
+                        data_info=batch["extra_fields"],
+                    ),
+                    self.tokenizer,
+                    self.config,
+                    metric_key_prefix,
+                )
+            )
 
             # print(metrics)
 
@@ -240,16 +242,18 @@ class Trainer:
 
                 loss = outputs.loss
                 valid_loss += loss.detach().float()
-                metrics.update(self.compute_metrics(
-                    EvalPrediction(
-                        predictions=preds,
-                        label_ids=batch["labels"],
-                        data_info=batch["extra_fields"],
-                    ),
-                    self.tokenizer,
-                    self.config,
-                    metric_key_prefix,
-                ))
+                metrics.update(
+                    self.compute_metrics(
+                        EvalPrediction(
+                            predictions=preds,
+                            label_ids=batch["labels"],
+                            data_info=batch["extra_fields"],
+                        ),
+                        self.tokenizer,
+                        self.config,
+                        metric_key_prefix,
+                    )
+                )
 
             metrics.update(self.compute_metrics_all(metric_key_prefix))
             metrics.update(
