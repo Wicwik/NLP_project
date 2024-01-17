@@ -72,17 +72,17 @@ class Trainer:
         for n in self.metric_fs:
             self.metric_fs[n].reset()
 
-    def get_avg_valid_loss(self, metrics):
-        loss = 0
+    def get_avg(self, metrics, keyword):
+        s = 0
         count = 0
 
         for n in metrics:
-            if "valid_loss" in n:
+            if keyword in n:
                 count += 1
-                loss += metrics[n]
+                s += metrics[n]
 
-        print(loss / count)
-        return loss / count
+        # print(s / count)
+        return {f"avg_{keyword}": s / count}
 
     def train(self):
         self.model.train()
@@ -275,9 +275,9 @@ class Trainer:
             self.metrics.update(self.train())
             self.metrics.update(self.valid())
 
-            valid_loss = self.get_avg_valid_loss(self.metrics)
-            if valid_loss < self.min_eval_loss:
-                self.min_eval_loss = valid_loss
+            self.metrics.update(self.get_avg(self.metrics, "valid_loss"))
+            if self.metrics["avg_valid_loss"] < self.min_eval_loss:
+                self.min_eval_loss = self.metrics["avg_valid_loss"]
                 artifact_name = f"{'_'.join(self.config['datasets'])}_{self.config['timestamp']}_{self.config['run']}"
                 checkpoint_name = os.path.join(
                     os.path.dirname(__file__),
@@ -299,6 +299,7 @@ class Trainer:
 
         test_metrics = self.test()
         self.metrics.update(test_metrics)
+        self.metrics.update(self.get_avg(self.metrics, "test_loss"))
 
         wandb.log(test_metrics)
         print("Test: ", test_metrics)
