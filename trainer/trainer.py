@@ -72,6 +72,19 @@ class Trainer:
         for n in self.metric_fs:
             self.metric_fs[n].reset()
 
+    def get_avg_valid_loss(self, metrics):
+        loss = 0
+        count = 0
+
+        for n in metrics:
+            if "valid_loss" in n:
+                count += 1
+                loss += metrics[n]
+
+        print(loss/count)
+        return loss/count
+
+
     def train(self):
         self.model.train()
         train_loss = 0
@@ -249,7 +262,7 @@ class Trainer:
             self.metrics.update(self.train())
             self.metrics.update(self.valid())
 
-            if self.metrics["valid_loss"] < self.min_eval_loss:
+            if self.get_avg_valid_loss(self.metrics) < self.min_eval_loss:
                 self.min_eval_loss = self.metrics["valid_loss"]
                 artifact_name = f"{'_'.join(self.config['datasets'])}_{self.config['timestamp']}_{self.config['run']}"
                 checkpoint_name = os.path.join(
