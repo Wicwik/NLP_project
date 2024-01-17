@@ -64,7 +64,8 @@ class PeftTraining:
             for dataset_name in config["datasets"]
         ]
 
-        config["max_target_length"] = torch.max(max_target_lengths)
+        config["max_target_length"] = max(max_target_lengths)
+        print(config["max_target_length"])
 
         train_datasets = [
             AutoTask.get(dataset_name, config).get(
