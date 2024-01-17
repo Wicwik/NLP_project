@@ -1,5 +1,5 @@
 [[configs]]
-datasets = ["mnli", "qqp", "qnli", "sst2", "sstb", "mrpc", "rte", "cola"]
+datasets = ["mnli", "qqp", "qnli", "sst2", "stsb", "mrpc", "rte", "cola"]
 dataset_config_name = ["en"]
 device = "cuda"
 learning_rate = 0.3
