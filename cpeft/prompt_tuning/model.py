@@ -31,11 +31,12 @@ class PromptTuningEmbedding(torch.nn.Module):
         elif config.prompt_init == "embedding_multi":
             emb = torch.load(config.prompt_init_embedding)
             self.embedding = torch.nn.ModuleList([torch.nn.Embedding(total_virtual_tokens, config.token_dim) for _ in range(config.n_targets)])
-            if type(emb) == dict:
-                for e in self.embedding:
+            
+            prtin(self.embedding)
+            for e in self.embedding:
+                if type(emb) == dict:
                     e.weight = torch.nn.Parameter(emb["prompt_embeddings"])
-            else:
-                for e in self.embedding:
+                else:
                     e.weight = torch.nn.Parameter(emb)
 
         print(self.embedding.weight.shape, self.embedding)
