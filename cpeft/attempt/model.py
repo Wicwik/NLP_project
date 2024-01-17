@@ -36,9 +36,14 @@ class AttemptSubModule(AttemptModule):
         self.attn_non_linear = torch.nn.SiLU()
         self.layer_norm = torch.nn.LayerNorm(config.token_dim)
 
-    def forward(self, inputs_embeds, prefix_emb):
+    def forward(self, inputs_embeds, prefix_emb, task_ids=None):
         avg_inputs_embeds, _ = torch.max(inputs_embeds, 1)
-        target_prompts = prefix_emb
+
+        if task_ids is not None:
+            target_prompts = torch.index_select(prefix_emb, 0, task_ids)
+        else:
+            target_prompts = prefix_emb
+
         # print(prefix_emb.size(), inputs_embeds.shape)
         # print(target_prompts.size())
         # print(self.mul_prefix_emb.repeat(inputs_embeds.shape[0], 1, 1, 1).size())

@@ -74,9 +74,9 @@ class PeftTraining:
 
         config["max_target_length"] = max(max_target_lengths)
         print(
-            "Max target length: ",
+            "Max target length:",
             config["max_target_length"],
-            "Chosen from: ",
+            "Chosen from:",
             max_target_lengths,
         )
 
