@@ -6,6 +6,7 @@ from transformers import DataCollatorForSeq2Seq
 @dataclass
 class TaskDataCollatorForSeq2Seq(DataCollatorForSeq2Seq):
     def check_uniqueness(self, samples):
+        print(samples)
         assert len(np.unique(samples)) == 1
 
     def __call__(self, features):
