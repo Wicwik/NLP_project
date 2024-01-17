@@ -27,3 +27,4 @@ max_test_samples = 500
 output_dir = "attempt_multi_glue"
 warmup_steps = 500
 shared_attn = true
+pad_to_max_length = true

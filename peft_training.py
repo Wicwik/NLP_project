@@ -10,6 +10,7 @@ from cpeft import PromptTuningConfig, get_peft_model
 from transformers import (
     AutoTokenizer,
     AutoModelForSeq2SeqLM,
+    default_data_collator,
 )
 from datasets import concatenate_datasets
 from torch.utils.data import DataLoader
@@ -191,7 +192,10 @@ class PeftTraining:
 
             test_datasets[name] = test_datasets[name].remove_columns(cols_to_remove)
 
-        data_collator = TaskDataCollatorForSeq2Seq(tokenizer)
+        if config["pad_to_max_length"]:
+            data_collator = default_data_collator
+        else:
+            data_collator = TaskDataCollatorForSeq2Seq(tokenizer)
 
         train_dataloader = DataLoader(
             train_dataset,
