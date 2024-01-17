@@ -34,7 +34,7 @@ class PromptTuningEmbedding(torch.nn.Module):
             
             print(self.embedding)
             for e in self.embedding:
-                print(e)
+                print(e, type(e))
                 if type(emb) == dict:
                     e.weight = torch.nn.Parameter(emb["prompt_embeddings"])
                 else:
