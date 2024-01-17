@@ -41,7 +41,8 @@ class PromptTuningEmbedding(torch.nn.Module):
                     torch.stack([emb for _ in range(config.n_targets)])
                 )
 
+        print(self.embedding.weight.shape, self.embedding)
+
     def forward(self, indices):
-        print(self.embedding)
         prompt_embeddings = self.embedding(indices)
         return prompt_embeddings
