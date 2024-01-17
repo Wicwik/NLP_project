@@ -39,8 +39,6 @@ class PromptTuningEmbedding(torch.nn.Module):
                     e.weight = torch.nn.Parameter(emb)
 
             self.embedding = torch.nn.ModuleList(embeddings)
-            
-        print(self.embedding[0])
 
     def forward(self, indices, task_ids=None):
         if task_ids is None:

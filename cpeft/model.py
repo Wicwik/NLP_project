@@ -211,7 +211,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
             .to(self.device)
         )
 
-        print(prompt_tokens)
+        print(prompt_tokens, self.device)
 
         if peft_config.inference_mode:
             prompts = prompt_encoder.embedding.weight.repeat(batch_size, 1, 1)
