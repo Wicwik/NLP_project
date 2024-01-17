@@ -17,6 +17,7 @@ class AttemptSubModule(AttemptModule):
         super().__init__()
 
         self.temperature = config.temperature
+        self.shared_attn = config.shared_attn
 
         total_virtual_tokens = (
             config.num_virtual_tokens * config.num_transformer_submodules

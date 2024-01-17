@@ -73,7 +73,12 @@ class PeftTraining:
         ]
 
         config["max_target_length"] = max(max_target_lengths)
-        print(config["max_target_length"], max_target_lengths)
+        print(
+            "Max target length: ",
+            config["max_target_length"],
+            "Chosen from: ",
+            max_target_lengths,
+        )
 
         train_datasets = [
             AutoTask.get(dataset_name, config).get(
@@ -293,6 +298,10 @@ class PeftTraining:
                 peft_config.attn_method = config["attn_method"]
                 peft_config.prefix_num = config["prefix_num"]
                 peft_config.temperature = config["temperature"]
+
+                if "shared_attn" in config:
+                    peft_config.shared_attn = config["shared_attn"]
+                    peft_config.n_targets = len(config["datasets"])
 
             # peft_config = PromptTuningConfig(task_type=TaskType.SEQ_2_SEQ_LM, num_virtual_tokens=config["num_virtual_tokens"])
 

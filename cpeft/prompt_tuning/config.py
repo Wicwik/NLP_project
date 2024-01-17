@@ -32,6 +32,10 @@ class PromptTuningConfig(PeftConfig):
         default=None, metadata={"help": "Number of layers in the model."}
     )
 
+    n_targets: Optional[int] = field(
+        default=None, metadata={"help": "Number of target tasks."}
+    )
+
     def __post_init__(self):
         self.peft_type = "prompt_tuning"
 
