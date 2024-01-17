@@ -108,7 +108,7 @@ class Trainer:
 
             loss = outputs.loss
             train_loss += loss.detach().float()
-            metrics = self.compute_metrics(
+            metrics.update(self.compute_metrics(
                 EvalPrediction(
                     predictions=preds,
                     label_ids=batch["labels"],
@@ -117,7 +117,7 @@ class Trainer:
                 self.tokenizer,
                 self.config,
                 metric_key_prefix,
-            )
+            ))
 
             # print(metrics)
 
@@ -127,7 +127,7 @@ class Trainer:
 
             self.optimizer.zero_grad()
 
-        metrics = self.compute_metrics_all(metric_key_prefix)
+        metrics.update(self.compute_metrics_all(metric_key_prefix))
         metrics.update(
             {f"{metric_key_prefix}_loss": train_loss.cpu() / len(self.train_dataloader)}
         )
@@ -240,7 +240,7 @@ class Trainer:
 
                 loss = outputs.loss
                 valid_loss += loss.detach().float()
-                metrics = self.compute_metrics(
+                metrics.update(self.compute_metrics(
                     EvalPrediction(
                         predictions=preds,
                         label_ids=batch["labels"],
@@ -249,9 +249,9 @@ class Trainer:
                     self.tokenizer,
                     self.config,
                     metric_key_prefix,
-                )
+                ))
 
-            metrics = self.compute_metrics_all(metric_key_prefix)
+            metrics.update(self.compute_metrics_all(metric_key_prefix))
             metrics.update(
                 {
                     f"{metric_key_prefix}_loss": valid_loss.cpu()
