@@ -262,8 +262,9 @@ class Trainer:
             self.metrics.update(self.train())
             self.metrics.update(self.valid())
 
-            if self.get_avg_valid_loss(self.metrics) < self.min_eval_loss:
-                self.min_eval_loss = self.metrics["valid_loss"]
+            valid_loss = self.get_avg_valid_loss(self.metrics)
+            if  valid_loss < self.min_eval_loss:
+                self.min_eval_loss = valid_loss
                 artifact_name = f"{'_'.join(self.config['datasets'])}_{self.config['timestamp']}_{self.config['run']}"
                 checkpoint_name = os.path.join(
                     os.path.dirname(__file__),
