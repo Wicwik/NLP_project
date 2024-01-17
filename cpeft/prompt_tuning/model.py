@@ -42,5 +42,6 @@ class PromptTuningEmbedding(torch.nn.Module):
                 )
 
     def forward(self, indices):
+        print(self.embedding)
         prompt_embeddings = self.embedding(indices)
         return prompt_embeddings

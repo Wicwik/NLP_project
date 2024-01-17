@@ -201,7 +201,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
         prompt_embeddings = prompt_encoder(prompt_tokens)
         return prompt_embeddings[0].detach().cpu()
 
-    def get_prompt(self, batch_size: int):
+    def get_prompt(self, batch_size: int, task_ids: List[int]):
         peft_config = self.active_peft_config
         prompt_encoder = self.prompt_encoder[self.active_adapter]
         prompt_tokens = (
@@ -322,6 +322,7 @@ class PeftModelForSeq2SeqLM(PeftModel):
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
+        task_ids=None,
         **kwargs,
     ):
         peft_config = self.active_peft_config
@@ -358,7 +359,7 @@ class PeftModelForSeq2SeqLM(PeftModel):
                 (prefix_attention_mask, attention_mask), dim=1
             )
 
-        prompts = self.get_prompt(batch_size=batch_size)
+        prompts = self.get_prompt(batch_size=batch_size, task_ids=task_ids)
 
         if peft_config.peft_type == "attempt":
             prompts = self.get_instance_prompt(inputs_embeds, prompts)
