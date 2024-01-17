@@ -281,6 +281,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
         if config.peft_type == "prompt_tuning" or config.peft_type == "attempt":
             prompt_encoder = PromptTuningEmbedding(config, self.word_embeddings)
 
+        print(self.device)
         prompt_encoder = prompt_encoder.to(self.device)
         self.prompt_encoder.update(torch.nn.ModuleDict({adapter_name: prompt_encoder}))
         self.prompt_tokens[adapter_name] = torch.arange(
