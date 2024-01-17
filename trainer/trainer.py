@@ -31,8 +31,8 @@ class Trainer:
         self.config = config
         (
             self.train_dataloader,
-            self.valid_dataloader,
-            self.test_dataloader,
+            self.valid_dataloaders,
+            self.test_dataloaders,
         ) = dataloaders
         self.optimizer = optimizer
         self.tokenizer = tokenizer
@@ -133,21 +133,82 @@ class Trainer:
 
     def valid(self):
         self.model.eval()
-        valid_loss = 0
         metrics = {}
         max_new_tokens = self.config["max_target_length"]
-        metric_key_prefix = "valid"
 
-        with torch.no_grad():
-            for _, batch in enumerate(tqdm(self.valid_dataloader)):
+        for task_name in self.valid_dataloaders:
+            valid_loss = 0
+            metric_key_prefix = f"{task_name}_valid"
+
+            with torch.no_grad():
+                for _, batch in enumerate(tqdm(self.valid_dataloaders[task_name])):
+                    # batch = {k: v.to(config["device"]) for k, v in batch.items()}
+                    outputs = self.model(
+                        input_ids=batch["input_ids"].to(self.config["device"]),
+                        labels=batch["labels"].to(self.config["device"]),
+                        attention_mask=batch["attention_mask"].to(self.config["device"]),
+                    )
+
+                    preds = self.model.generate(
+                        input_ids=batch["input_ids"].to(self.config["device"]),
+                        labels=batch["labels"].to(self.config["device"]),
+                        attention_mask=batch["attention_mask"].to(self.config["device"]),
+                        max_new_tokens=max_new_tokens,
+                    )
+
+                    loss = outputs.loss
+                    valid_loss += loss.detach().float()
+                    metrics = self.compute_metrics(
+                        EvalPrediction(
+                            predictions=preds,
+                            label_ids=batch["labels"],
+                            data_info=batch["extra_fields"],
+                        ),
+                        self.tokenizer,
+                        self.config,
+                        metric_key_prefix,
+                    )
+
+            metrics = self.compute_metrics_all(metric_key_prefix)
+            metrics.update(
+                {f"{metric_key_prefix}_loss": valid_loss.cpu() / len(self.valid_dataloaders[task_name])}
+            )
+            metrics.update(
+                {
+                    f"{metric_key_prefix}_ppl": torch.exp(
+                        metrics[f"{metric_key_prefix}_loss"]
+                    )
+                }
+            )
+
+            self.reset_metrics()
+
+        return metrics
+
+    def test(self):
+        model = AutoModelForSeq2SeqLM.from_pretrained(self.config["model_name_or_path"])
+        model = PeftModel.from_pretrained(model, self.config["best_model_path"])
+
+        model.to(self.config["device"])
+        model.eval()
+        metrics = {}
+
+        max_new_tokens = self.config["max_target_length"]
+
+        for task_name in self.test_dataloaders:
+            valid_loss = 0
+            metric_key_prefix = f"{task_name}_test"
+
+            for _, batch in enumerate(tqdm(self.test_dataloaders[task_name])):
                 # batch = {k: v.to(config["device"]) for k, v in batch.items()}
-                outputs = self.model(
-                    input_ids=batch["input_ids"].to(self.config["device"]),
-                    labels=batch["labels"].to(self.config["device"]),
-                    attention_mask=batch["attention_mask"].to(self.config["device"]),
-                )
+                with torch.no_grad():
+                    outputs = model(
+                        input_ids=batch["input_ids"].to(self.config["device"]),
+                        labels=batch["labels"].to(self.config["device"]),
+                        attention_mask=batch["attention_mask"].to(self.config["device"]),
+                    )
 
-                preds = self.model.generate(
+                preds = model.generate(
                     input_ids=batch["input_ids"].to(self.config["device"]),
                     labels=batch["labels"].to(self.config["device"]),
                     attention_mask=batch["attention_mask"].to(self.config["device"]),
@@ -167,76 +228,19 @@ class Trainer:
                     metric_key_prefix,
                 )
 
-        metrics = self.compute_metrics_all(metric_key_prefix)
-        metrics.update(
-            {f"{metric_key_prefix}_loss": valid_loss.cpu() / len(self.valid_dataloader)}
-        )
-        metrics.update(
-            {
-                f"{metric_key_prefix}_ppl": torch.exp(
-                    metrics[f"{metric_key_prefix}_loss"]
-                )
-            }
-        )
-
-        self.reset_metrics()
-
-        return metrics
-
-    def test(self):
-        model = AutoModelForSeq2SeqLM.from_pretrained(self.config["model_name_or_path"])
-        model = PeftModel.from_pretrained(model, self.config["best_model_path"])
-
-        model.to(self.config["device"])
-        model.eval()
-        valid_loss = 0
-        metrics = {}
-        metric_key_prefix = "test"
-
-        max_new_tokens = self.config["max_target_length"]
-
-        for _, batch in enumerate(tqdm(self.test_dataloader)):
-            # batch = {k: v.to(config["device"]) for k, v in batch.items()}
-            with torch.no_grad():
-                outputs = model(
-                    input_ids=batch["input_ids"].to(self.config["device"]),
-                    labels=batch["labels"].to(self.config["device"]),
-                    attention_mask=batch["attention_mask"].to(self.config["device"]),
-                )
-
-            preds = model.generate(
-                input_ids=batch["input_ids"].to(self.config["device"]),
-                labels=batch["labels"].to(self.config["device"]),
-                attention_mask=batch["attention_mask"].to(self.config["device"]),
-                max_new_tokens=max_new_tokens,
+            metrics = self.compute_metrics_all(metric_key_prefix)
+            metrics.update(
+                {f"{metric_key_prefix}_loss": valid_loss.cpu() / len(self.test_dataloaders[task_name])}
+            )
+            metrics.update(
+                {
+                    f"{metric_key_prefix}_ppl": torch.exp(
+                        metrics[f"{metric_key_prefix}_loss"]
+                    )
+                }
             )
 
-            loss = outputs.loss
-            valid_loss += loss.detach().float()
-            metrics = self.compute_metrics(
-                EvalPrediction(
-                    predictions=preds,
-                    label_ids=batch["labels"],
-                    data_info=batch["extra_fields"],
-                ),
-                self.tokenizer,
-                self.config,
-                metric_key_prefix,
-            )
-
-        metrics = self.compute_metrics_all(metric_key_prefix)
-        metrics.update(
-            {f"{metric_key_prefix}_loss": valid_loss.cpu() / len(self.test_dataloader)}
-        )
-        metrics.update(
-            {
-                f"{metric_key_prefix}_ppl": torch.exp(
-                    metrics[f"{metric_key_prefix}_loss"]
-                )
-            }
-        )
-
-        self.reset_metrics()
+            self.reset_metrics()
 
         return metrics
 
