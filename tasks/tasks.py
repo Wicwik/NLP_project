@@ -793,7 +793,7 @@ class AutoTask:
             return TASK_MAPPING[task](config, seed)
 
         raise ValueError(
-            "Unrecognized task {} for AutoTask Model: {}.\n"
+            f"Unrecognized task {task} for AutoTask Model: {config['model_name_or_path']}.\n"
             "Task name should be one of {}.".format(
                 ", ".join(c for c in TASK_MAPPING.keys())
             )
