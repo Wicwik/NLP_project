@@ -44,7 +44,7 @@ class PromptTuningEmbedding(torch.nn.Module):
         if task_ids is None:
             prompt_embeddings = self.embedding(indices)
         else:
-            print(indices)
+            # print(indices)
             prompt_embeddings = torch.stack([self.embedding[id](indices) for id in task_ids])
         
         return prompt_embeddings

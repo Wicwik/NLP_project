@@ -204,7 +204,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
     def get_prompt(self, batch_size: int, task_ids: List[int]):
         peft_config = self.active_peft_config
         prompt_encoder = self.prompt_encoder[self.active_adapter]
-        print(prompt_encoder.embedding[0].weight.device)
+        # print(prompt_encoder.embedding[0].weight.device)
 
         if type(prompt_encoder.embedding) == torch.nn.ModuleList:
             prompt_tokens = (
