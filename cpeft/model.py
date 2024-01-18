@@ -193,16 +193,19 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
     def get_prompt_embedding_to_save(self, adapter_name: str):
         prompt_encoder = self.prompt_encoder[adapter_name]
 
-        prompt_tokens = self.prompt_tokens[adapter_name].to(
-            prompt_encoder.embedding.weight.device
-        )
-
         if type(prompt_encoder.embedding) == torch.nn.ModuleList:
+            prompt_tokens = self.prompt_tokens[adapter_name].to(
+                prompt_encoder.embedding[0].weight.device
+            )
+
             prompt_embeddings = prompt_encoder(
                 prompt_tokens,
                 task_ids=torch.tensor(range(len(prompt_encoder.embedding))),
             )
         else:
+            prompt_tokens = self.prompt_tokens[adapter_name].to(
+                prompt_encoder.embedding.weight.device
+            )
             prompt_embeddings = prompt_encoder(prompt_tokens, task_ids=None)
         return prompt_embeddings.detach().cpu()
 
