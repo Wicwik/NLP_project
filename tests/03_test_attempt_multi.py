@@ -54,7 +54,7 @@ assert str(model) == str(new_model), "Model is not the same after saving and loa
 for i, _ in enumerate(model.prompt_encoder["peft"].embedding):
 
     assert (
-        model.prompt_encoder["peft"].embedding[i].weights == new_model.prompt_encoder["peft"].embedding[i].weights
+        model.prompt_encoder["peft"].embedding[i].weight == new_model.prompt_encoder["peft"].embedding[i].weight
     ).all(), "Prompt embeddings must be the same after save and load."
 
 utils.passed(__file__)
