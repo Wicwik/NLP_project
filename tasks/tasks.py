@@ -400,7 +400,7 @@ class STSB(AbstractTask):
     labels_list = [str(np.round(label, decimals=1)) for label in np.arange(0, 5.2, 0.2)]
 
     metrics = [PearsonCorrCoef, SpearmanCorrCoef]
-    metric_names = ["pearsonr", "spearmanr", "accuracy"]
+    metric_names = ["pearsonr", "spearmanr"]
     split_to_data_split = {
         "train": "train",
         "validation": "validation",
