@@ -208,10 +208,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
         if type(prompt_encoder.embedding) == torch.nn.ModuleList:
             prompt_tokens = (
-                self.prompt_tokens[self.active_adapter]
-                .unsqueeze(0)
-                .expand(batch_size, -1)
-                .to(prompt_encoder.embedding[0].weight.device)
+                self.prompt_tokens[self.active_adapter].to(prompt_encoder.embedding[0].weight.device)
             )
         else:
             prompt_tokens = (
