@@ -192,14 +192,19 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
     def get_prompt_embedding_to_save(self, adapter_name: str):
         prompt_encoder = self.prompt_encoder[adapter_name]
-        prompt_tokens = (
-            self.prompt_tokens[adapter_name]
-            .unsqueeze(0)
-            .expand(1, -1)
-            .to(prompt_encoder.embedding.weight.device)
+
+        prompt_tokens = self.prompt_tokens[adapter_name].to(
+            prompt_encoder.embedding.weight.device
         )
-        prompt_embeddings = prompt_encoder(prompt_tokens)
-        return prompt_embeddings[0].detach().cpu()
+
+        if type(prompt_encoder.embedding) == torch.nn.ModuleList:
+            prompt_embeddings = prompt_encoder(
+                prompt_tokens,
+                task_ids=torch.tensor(range(len(prompt_encoder.embedding))),
+            )
+        else:
+            prompt_embeddings = prompt_encoder(prompt_tokens, task_ids=None)
+        return prompt_embeddings.detach().cpu()
 
     def get_prompt(self, batch_size: int, task_ids: List[int]):
         peft_config = self.active_peft_config
@@ -207,8 +212,8 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
         # print(prompt_encoder.embedding[0].weight.device)
 
         if type(prompt_encoder.embedding) == torch.nn.ModuleList:
-            prompt_tokens = (
-                self.prompt_tokens[self.active_adapter].to(prompt_encoder.embedding[0].weight.device)
+            prompt_tokens = self.prompt_tokens[self.active_adapter].to(
+                prompt_encoder.embedding[0].weight.device
             )
         else:
             prompt_tokens = (
@@ -222,7 +227,9 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
             if task_ids is None:
                 prompts = prompt_encoder.embedding.weight.repeat(batch_size, 1, 1)
             else:
-                prompts = torch.stack([prompt_encoder.embedding[id].weight for id in task_ids])
+                prompts = torch.stack(
+                    [prompt_encoder.embedding[id].weight for id in task_ids]
+                )
         else:
             prompts = prompt_encoder(prompt_tokens, task_ids)
 
