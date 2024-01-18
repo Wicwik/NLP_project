@@ -251,6 +251,7 @@ class PeftTraining:
             )
         }
 
+    #TODO compute metrics the right way for multiple datasets
     def compute_metrics(self, eval_preds, tokenizer, config, prefix):
         preds, labels, data_info = eval_preds
         postprocessor = AutoTask.get(config["datasets"][0], config).postprocessor
