@@ -31,12 +31,15 @@ cpeft_config = AttemptConfig(
     ],
     prefix_num=6,
     shared_attn=True,
-    n_targets=2
+    n_targets=2,
 )
 
 model = AutoModelForSeq2SeqLM.from_pretrained("t5-base")
 model = get_peft_model(model, cpeft_config).to("cuda")
-weights = [model.prompt_encoder["peft"].embedding[i].weight for i, _ in enumerate(model.prompt_encoder["peft"].embedding)]
+weights = [
+    model.prompt_encoder["peft"].embedding[i].weight
+    for i, _ in enumerate(model.prompt_encoder["peft"].embedding)
+]
 
 model.print_trainable_parameters()
 
@@ -44,7 +47,10 @@ model.save_pretrained(cpeft_save)
 
 new_model = AutoModelForSeq2SeqLM.from_pretrained("t5-base")
 new_model = PeftModel.from_pretrained(new_model, cpeft_save).to("cuda")
-new_weights = [new_model.prompt_encoder["peft"].embedding[i].weight for i, _ in enumerate(model.prompt_encoder["peft"].embedding)]
+new_weights = [
+    new_model.prompt_encoder["peft"].embedding[i].weight
+    for i, _ in enumerate(model.prompt_encoder["peft"].embedding)
+]
 
 # print(str(new_model._peft_config) == str(model._peft_config))
 print(model)
@@ -52,9 +58,9 @@ print(model)
 assert str(model) == str(new_model), "Model is not the same after saving and loading."
 
 for i, _ in enumerate(model.prompt_encoder["peft"].embedding):
-
     assert (
-        model.prompt_encoder["peft"].embedding[i].weight == new_model.prompt_encoder["peft"].embedding[i].weight
+        model.prompt_encoder["peft"].embedding[i].weight
+        == new_model.prompt_encoder["peft"].embedding[i].weight
     ).all(), "Prompt embeddings must be the same after save and load."
 
 utils.passed(__file__)
