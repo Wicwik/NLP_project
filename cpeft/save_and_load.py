@@ -34,7 +34,7 @@ def set_peft_model_state_dict(model, peft_state_dict, adapter_name="peft"):
 
     load_result = model.load_state_dict(peft_model_state_dict, strict=False)
     if config.is_prompt_learning:
-        if model.prompt_encoder[adapter_name].embedding == torch.nn.ModuleList:
+        if type(model.prompt_encoder[adapter_name].embedding) == torch.nn.ModuleList:
             for i, emb in enumerate(peft_model_state_dict["prompt_embeddings"]):
                 model.prompt_encoder[adapter_name].embedding[i].weight = emb
         else:
