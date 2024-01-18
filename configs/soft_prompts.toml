@@ -22,6 +22,7 @@
 # output_dir = "soft_prompts"
 # warmup_steps = 500
 # shared_attn = false
+pad_to_max_length =  false
 
 [[configs]]
 datasets = ["mrpc"]
@@ -47,6 +48,7 @@ max_test_samples = 500
 output_dir = "soft_prompts"
 warmup_steps = 500
 shared_attn = false
+pad_to_max_length =  false
 
 [[configs]]
 datasets = ["sst2"]
@@ -72,6 +74,7 @@ split_validation_test = true
 output_dir = "soft_prompts"
 warmup_steps = 500
 shared_attn = false
+pad_to_max_length =  false
 
 [[configs]]
 datasets = ["qnli"]
@@ -97,6 +100,7 @@ split_validation_test = true
 output_dir = "soft_prompts"
 warmup_steps = 500
 shared_attn = false
+pad_to_max_length =  false
 
 [[configs]]
 datasets = ["mnli"]
@@ -122,6 +126,7 @@ split_validation_test = true
 output_dir = "soft_prompts"
 warmup_steps = 500
 shared_attn = false
+pad_to_max_length =  false
 
 [[configs]]
 datasets = ["qqp"]
@@ -147,6 +152,7 @@ split_validation_test = true
 output_dir = "soft_prompts"
 warmup_steps = 500
 shared_attn = false
+pad_to_max_length =  false
 
 [[configs]]
 datasets = ["superglue-record"]
@@ -172,3 +178,4 @@ split_validation_test = true
 output_dir = "soft_prompts"
 warmup_steps = 500
 shared_attn = false
+pad_to_max_length =  false

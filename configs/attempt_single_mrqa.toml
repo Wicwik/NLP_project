@@ -27,6 +27,7 @@ split_validation_test = true
 output_dir = "attempt_single_nq"
 warmup_steps = 500
 shared_attn = false
+pad_to_max_length = true
 
 [[configs]]
 datasets = ["hotpotqa"]
@@ -57,6 +58,7 @@ max_train_samples = 100000
 output_dir = "attempt_single_hotpotqa"
 warmup_steps = 500
 shared_attn = false
+pad_to_max_length = true
 
 [[configs]]
 datasets = ["searchqa"]
@@ -87,6 +89,7 @@ split_validation_test = true
 output_dir = "attempt_single_searchqa"
 warmup_steps = 500
 shared_attn = false
+pad_to_max_length = true
 
 [[configs]]
 datasets = ["newsqa"]
@@ -117,3 +120,4 @@ split_validation_test = true
 output_dir = "attempt_single_newsqa"
 warmup_steps = 500
 shared_attn = false
+pad_to_max_length = true

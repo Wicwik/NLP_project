@@ -299,7 +299,7 @@ class PeftTraining:
                 peft_config.prefix_num = config["prefix_num"]
                 peft_config.temperature = config["temperature"]
 
-                if "shared_attn" in config:
+                if config["shared_attn"]:
                     peft_config.shared_attn = config["shared_attn"]
                     peft_config.n_targets = len(config["datasets"])
 

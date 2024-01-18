@@ -27,3 +27,4 @@ split_validation_test = true
 output_dir = "attempt_single_mrpc"
 warmup_steps = 500
 shared_attn = false
+pad_to_max_length = true
