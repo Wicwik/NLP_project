@@ -39,10 +39,10 @@ class AttemptSubModule(AttemptModule):
     def forward(self, inputs_embeds, prefix_emb, task_ids=None):
         avg_inputs_embeds, _ = torch.max(inputs_embeds, 1)
 
-        if task_ids is not None:
-            target_prompts = torch.index_select(prefix_emb, 0, task_ids)
-        else:
-            target_prompts = prefix_emb
+        target_prompts = prefix_emb
+
+        print("Target prompts shape:", target_prompts.shape)
+        print(target_prompts)
 
         # print(prefix_emb.size(), inputs_embeds.shape)
         # print(target_prompts.size())

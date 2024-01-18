@@ -222,7 +222,10 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
             )
 
         if peft_config.inference_mode:
-            prompts = prompt_encoder.embedding.weight.repeat(batch_size, 1, 1)
+            if task_ids is None:
+                prompts = prompt_encoder.embedding.weight.repeat(batch_size, 1, 1)
+            else:
+                prompts = torch.stack([prompt_encoder.embedding[id].weight for id in task_ids])
         else:
             prompts = prompt_encoder(prompt_tokens, task_ids)
 
