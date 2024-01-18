@@ -97,7 +97,7 @@ class Trainer:
                 input_ids=batch["input_ids"].to(self.config["device"]),
                 labels=batch["labels"].to(self.config["device"]),
                 attention_mask=batch["attention_mask"].to(self.config["device"]),
-                task_ids=batch["task_ids"],
+                task_ids=batch.get("task_ids", None),
             )
 
             preds = self.model.generate(
@@ -105,7 +105,7 @@ class Trainer:
                 labels=batch["labels"].to(self.config["device"]),
                 attention_mask=batch["attention_mask"].to(self.config["device"]),
                 max_new_tokens=max_new_tokens,
-                task_ids=batch["task_ids"],
+                task_ids=batch.get("task_ids", None),
             )
 
             loss = outputs.loss
@@ -165,7 +165,7 @@ class Trainer:
                         attention_mask=batch["attention_mask"].to(
                             self.config["device"]
                         ),
-                        task_ids=batch["task_ids"],
+                        task_ids=batch.get("task_ids", None),
                     )
 
                     preds = self.model.generate(
@@ -175,7 +175,7 @@ class Trainer:
                             self.config["device"]
                         ),
                         max_new_tokens=max_new_tokens,
-                        task_ids=batch["task_ids"],
+                        task_ids=batch.get("task_ids", None),
                     )
 
                     loss = outputs.loss
@@ -235,7 +235,7 @@ class Trainer:
                         attention_mask=batch["attention_mask"].to(
                             self.config["device"]
                         ),
-                        task_ids=batch["task_ids"],
+                        task_ids=batch.get("task_ids", None),
                     )
 
                 preds = model.generate(
@@ -243,7 +243,7 @@ class Trainer:
                     labels=batch["labels"].to(self.config["device"]),
                     attention_mask=batch["attention_mask"].to(self.config["device"]),
                     max_new_tokens=max_new_tokens,
-                    task_ids=batch["task_ids"],
+                    task_ids=batch.get("task_ids", None),
                 )
 
                 loss = outputs.loss
