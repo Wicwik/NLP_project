@@ -26,6 +26,7 @@ split_validation_test = true
 # max_test_samples = 500
 output_dir = "attempt_single_mnli_ours"
 warmup_steps = 500
+shared_attn = false
 
 [[configs]]
 datasets = ["qqp"]
@@ -55,6 +56,7 @@ split_validation_test = true
 # max_test_samples = 500
 output_dir = "attempt_single_qqp_ours"
 warmup_steps = 500
+shared_attn = false
 
 [[configs]]
 datasets = ["qnli"]
@@ -84,6 +86,7 @@ split_validation_test = true
 # max_test_samples = 500
 output_dir = "attempt_single_qnli_ours"
 warmup_steps = 500
+shared_attn = false
 
 [[configs]]
 datasets = ["sst2"]
@@ -113,6 +116,7 @@ split_validation_test = true
 # max_test_samples = 500
 output_dir = "attempt_single_sst2_ours"
 warmup_steps = 500
+shared_attn = false
 
 [[configs]]
 datasets = ["stsb"]
@@ -142,6 +146,7 @@ split_validation_test = true
 # max_test_samples = 500
 output_dir = "attempt_single_stsb_ours"
 warmup_steps = 500
+shared_attn = false
 
 [[configs]]
 datasets = ["mrpc"]
@@ -171,6 +176,7 @@ split_validation_test = true
 # max_test_samples = 500
 output_dir = "attempt_single_mrpc_ours"
 warmup_steps = 500
+shared_attn = false
 
 [[configs]]
 datasets = ["rte"]
@@ -200,6 +206,7 @@ split_validation_test = true
 # max_test_samples = 500
 output_dir = "attempt_single_rte_ours"
 warmup_steps = 500
+shared_attn = false
 
 [[configs]]
 datasets = ["cola"]
@@ -229,3 +236,4 @@ split_validation_test = true
 # max_test_samples = 500
 output_dir = "attempt_single_cola_ours"
 warmup_steps = 500
+shared_attn = false

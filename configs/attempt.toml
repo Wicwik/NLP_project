@@ -26,3 +26,4 @@ split_validation_test = true
 # max_test_samples = 500
 output_dir = "attempt_single_mrpc"
 warmup_steps = 500
+shared_attn = false

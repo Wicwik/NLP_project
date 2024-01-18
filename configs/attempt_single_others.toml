@@ -26,6 +26,7 @@ split_validation_test = true
 # max_test_samples = 500
 output_dir = "attempt_single_winogrande"
 warmup_steps = 500
+shared_attn = false
 
 [[configs]]
 datasets = ["yelp_polarity"]
@@ -55,6 +56,7 @@ max_train_samples = 100000
 # max_test_samples = 500
 output_dir = "attempt_single_yelp"
 warmup_steps = 500
+shared_attn = false
 
 [[configs]]
 datasets = ["scitail"]
@@ -84,6 +86,7 @@ split_validation_test = true
 # max_test_samples = 500
 output_dir = "attempt_single_scitail"
 warmup_steps = 500
+shared_attn = false
 
 [[configs]]
 datasets = ["paws"]
@@ -113,3 +116,4 @@ split_validation_test = true
 # max_test_samples = 500
 output_dir = "attempt_single_paws"
 warmup_steps = 500
+shared_attn = false
