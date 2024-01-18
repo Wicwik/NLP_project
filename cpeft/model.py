@@ -401,9 +401,10 @@ class PeftModelForSeq2SeqLM(PeftModel):
         kwargs = deepcopy(kwargs)
 
         input_ids = kwargs.pop("input_ids")
+        task_ids = kwargs.pop("task_ids")
         inputs_embeds = self.word_embeddings(input_ids)
         batch_size = inputs_embeds.shape[0]
-        prompts = self.get_prompt(batch_size=batch_size)
+        prompts = self.get_prompt(batch_size=batch_size, task_ids=task_ids)
 
         if peft_config.peft_type == "attempt":
             prompts = self.get_instance_prompt(inputs_embeds, prompts)
