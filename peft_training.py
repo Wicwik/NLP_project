@@ -22,7 +22,6 @@ from trainer import Trainer
 class PeftTraining:
     configs = None
     use_wandb = None
-    metric_fs = None
 
     def __init__(self, configs, use_wandb=True):
         self.configs = configs
@@ -241,43 +240,73 @@ class PeftTraining:
 
         return train_dataloader, valid_dataloaders, test_dataloaders
 
-    # create torchmetric metrics with their names
-    def create_metric_fs(self, config):
-        return {
-            n: m()
-            for n, m in zip(
-                AutoTask.get(config["datasets"][0], config).metric_names,
-                AutoTask.get(config["datasets"][0], config).metrics,
+    # compute metrics for multi task setting
+    def build_compute_metrics_fn(self, tokenizer, config):
+        def reset_metrics(metrics):
+            for _, m in metrics.items():
+                m.reset()
+
+        def compute_metrics_all(metrics, prefix):
+            result = {}
+
+            for n, m in metrics.items():
+                if "squad" in n.lower():
+                    squad_m = m.compute()
+                    result[f"{prefix}_em"] = squad_m["em"]
+                    result[f"{prefix}_f1"] = squad_m["f1"]
+                else:
+                    result[f"{prefix}_{n}"]: m.compute()
+
+            return result
+
+        def compute_metrics(eval_preds, metrics, prefix, post_processor=None):
+            preds, labels, data_info = eval_preds
+            decoded_preds, decoded_labels = post_processor(
+                preds,
+                labels,
+                tokenizer,
+                ignore_pad_token_for_loss=True,
+                data_info=data_info,
             )
-        }
 
-    #TODO compute metrics the right way for multiple datasets
-    def compute_metrics(self, eval_preds, tokenizer, config, prefix):
-        preds, labels, data_info = eval_preds
-        postprocessor = AutoTask.get(config["datasets"][0], config).postprocessor
-        decoded_preds, decoded_labels = postprocessor(
-            preds,
-            labels,
-            tokenizer,
-            ignore_pad_token_for_loss=True,
-            data_info=data_info,
-        )
+            result = {}
 
-        # print(decoded_preds, decoded_labels)
+            for n, m in metrics.items():
+                if "squad" in n.lower():
+                    squad_m = m(decoded_preds, decoded_labels)
+                    result[f"{prefix}_em"] = squad_m["em"]
+                    result[f"{prefix}_f1"] = squad_m["f1"]
+                else:
+                    result[f"{prefix}_{n}"]: m(decoded_preds, decoded_labels)
 
-        metrics = {
-            n: m(decoded_preds, decoded_labels) for n, m in self.metric_fs.items()
-        }
+            return result
 
-        result_m = {}
-        for n, m in metrics.items():
-            if "squad" in n.lower():
-                result_m[f"{prefix}_em"] = m["em"]
-                result_m[f"{prefix}_f1"] = m["f1"]
-            else:
-                result_m[f"{prefix}_{n}"] = m
+        def tasks_metrics(task):
+            post_processor = AutoTask.get(task, config).postprocessor
 
-        return result_m
+            metrics = {
+                n: m()
+                for n, m in zip(
+                    AutoTask.get(task, config).metric_names,
+                    AutoTask.get(task, config).metrics,
+                )
+            }
+
+            return {
+                "compute_metrics": functools.partial(
+                    compute_metrics,
+                    metrics=metrics,
+                    post_processor=post_processor,
+                ),
+                "compute_metrics_all": functools.partial(
+                    compute_metrics_all,
+                    metrics=metrics,
+                ),
+                "reset_metrics": functools.partial(reset_metrics, metrics=metrics)
+            }
+
+        return {task: tasks_metrics(task) for task in config["datasets"]}
+
 
     def run(self):
         for config in self.configs:
@@ -327,7 +356,7 @@ class PeftTraining:
                 model.to(config["device"])
                 config["timestamp"] = datetime.now().strftime("%m%d%Y%H%M%S")
 
-                self.metric_fs = self.create_metric_fs(config)
+                metrics_fn = self.build_compute_metrics_fn(config, tokenizer, config)
 
                 optimizer = torch.optim.AdamW(
                     model.parameters(), lr=config["learning_rate"]
@@ -349,8 +378,7 @@ class PeftTraining:
                     dataloaders=self.get_data(config, tokenizer),
                     optimizer=optimizer,
                     tokenizer=tokenizer,
-                    metric_fs=self.metric_fs,
-                    compute_metrics=self.compute_metrics,
+                    metric_fs=metrics_fn,
                 )
 
                 trainer.run()
