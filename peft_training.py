@@ -119,9 +119,10 @@ class PeftTraining:
                     load_from_cache_file=False,
                     desc="Running preprocess_function on train_dataset",
                 )
+            
+            train_datasets[i] = train_datasets[i].remove_columns(cols_to_remove + ["extra_fields"])
 
         train_dataset = concatenate_datasets(train_datasets)
-        train_dataset = train_dataset.remove_columns(cols_to_remove)
 
         valid_datasets = {
             dataset_name: AutoTask.get(dataset_name, config).get(
