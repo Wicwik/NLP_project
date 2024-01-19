@@ -76,7 +76,7 @@ class AbstractTask:
     ]
 
     def __init__(self, config, seed=42):
-        self.dataset_config_name = config["dataset_config_name"][0]
+        self.dataset_config_name = "en"
         self.config = config
         self.seed = seed
         self.formater = AutoType.get(self.config["task_type"]).formater
@@ -400,7 +400,7 @@ class STSB(AbstractTask):
     labels_list = [str(np.round(label, decimals=1)) for label in np.arange(0, 5.2, 0.2)]
 
     metrics = [PearsonCorrCoef, SpearmanCorrCoef]
-    metric_names = ["pearsonr", "spearmanr", "accuracy"]
+    metric_names = ["pearsonr", "spearmanr"]
     split_to_data_split = {
         "train": "train",
         "validation": "validation",
@@ -617,6 +617,11 @@ class SuperGLUERecord(AbstractTask):
     name = "superglue-record"
     metrics = [SquadMetric]
     metric_names = ["SquadMetric"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation",
+        "test": "validation",
+    }
 
     def load_dataset(self, split):
         return datasets.load_dataset("super_glue", "record", split=split)
@@ -788,7 +793,7 @@ class AutoTask:
             return TASK_MAPPING[task](config, seed)
 
         raise ValueError(
-            "Unrecognized task {} for AutoTask Model: {}.\n"
+            f"Unrecognized task {task} for AutoTask Model: {config['model_name_or_path']}.\n"
             "Task name should be one of {}.".format(
                 ", ".join(c for c in TASK_MAPPING.keys())
             )

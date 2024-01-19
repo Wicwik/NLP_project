@@ -27,6 +27,9 @@ class AttemptConfig(PromptTuningConfig):
         default=2087,
         metadata={"help": "Initial temperature to calculate attention with."},
     )
+    shared_attn: bool = field(
+        default=False, metadata={"help": "multi-task attention sharing"}
+    )
 
     def __post_init__(self):
         self.peft_type = "attempt"

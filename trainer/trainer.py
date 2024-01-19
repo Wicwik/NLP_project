@@ -9,6 +9,8 @@ from transformers import (
 
 from cpeft import PeftModel
 
+# from peft import PeftModel
+
 from tqdm import tqdm
 
 from .utils import EvalPrediction
@@ -22,8 +24,7 @@ class Trainer:
         dataloaders,
         optimizer,
         tokenizer,
-        metric_fs,
-        compute_metrics,
+        metrics_fn,
         wandb=True,
     ):
         self.min_eval_loss = torch.inf
@@ -31,13 +32,12 @@ class Trainer:
         self.config = config
         (
             self.train_dataloader,
-            self.valid_dataloader,
-            self.test_dataloader,
+            self.valid_dataloaders,
+            self.test_dataloaders,
         ) = dataloaders
         self.optimizer = optimizer
         self.tokenizer = tokenizer
-        self.metric_fs = metric_fs
-        self.compute_metrics = compute_metrics
+        self.metrics_fn = metrics_fn
         self.metrics = {}
         self.wandb = wandb
 
@@ -57,57 +57,34 @@ class Trainer:
             name=f"{self.config['model_name_or_path']}_{'_'.join(self.config['datasets'])}_{self.config['timestamp']}_{self.config['run']}",
         )
 
-    def compute_metrics_all(self, prefix):
-        result_m = {}
-        for n, m in self.metric_fs.items():
-            if "squad" in n.lower():
-                result_m[f"{prefix}_em"] = m["em"].compute()
-                result_m[f"{prefix}_f1"] = m["f1"].compute()
-            else:
-                result_m[f"{prefix}_{n}"] = m.compute()
+    def get_avg(self, metrics, keyword):
+        s = 0
+        count = 0
 
-        return result_m
+        for n in metrics:
+            if keyword in n:
+                count += 1
+                s += metrics[n]
 
-    def reset_metrics(self):
-        for n in self.metric_fs:
-            self.metric_fs[n].reset()
+        # print(s / count)
+        return {f"avg_{keyword}": s / count}
 
     def train(self):
         self.model.train()
         train_loss = 0
         metrics = {}
-        max_new_tokens = self.config["max_target_length"]
         metric_key_prefix = "train"
 
-        for _, batch in enumerate(tqdm(self.train_dataloader)):
-            # batch = {k: v.to(config["device"]) for k, v in batch.items()}
+        for i, batch in enumerate(tqdm(self.train_dataloader)):
             outputs = self.model(
                 input_ids=batch["input_ids"].to(self.config["device"]),
                 labels=batch["labels"].to(self.config["device"]),
                 attention_mask=batch["attention_mask"].to(self.config["device"]),
-            )
-
-            preds = self.model.generate(
-                input_ids=batch["input_ids"].to(self.config["device"]),
-                labels=batch["labels"].to(self.config["device"]),
-                attention_mask=batch["attention_mask"].to(self.config["device"]),
-                max_new_tokens=max_new_tokens,
+                task_ids=batch.get("task_ids", None),
             )
 
             loss = outputs.loss
             train_loss += loss.detach().float()
-            metrics = self.compute_metrics(
-                EvalPrediction(
-                    predictions=preds,
-                    label_ids=batch["labels"],
-                    data_info=batch["extra_fields"],
-                ),
-                self.tokenizer,
-                self.config,
-                metric_key_prefix,
-            )
-
-            # print(metrics)
 
             loss.backward()
             self.optimizer.step()
@@ -115,7 +92,10 @@ class Trainer:
 
             self.optimizer.zero_grad()
 
-        metrics = self.compute_metrics_all(metric_key_prefix)
+            # if i > 0 and i % 1000 == 0:
+            #     print(self.valid())
+            #     self.model.train()
+
         metrics.update(
             {f"{metric_key_prefix}_loss": train_loss.cpu() / len(self.train_dataloader)}
         )
@@ -127,59 +107,71 @@ class Trainer:
             }
         )
 
-        self.reset_metrics()
-
         return metrics
 
     def valid(self):
         self.model.eval()
-        valid_loss = 0
         metrics = {}
         max_new_tokens = self.config["max_target_length"]
-        metric_key_prefix = "valid"
 
-        with torch.no_grad():
-            for _, batch in enumerate(tqdm(self.valid_dataloader)):
-                # batch = {k: v.to(config["device"]) for k, v in batch.items()}
-                outputs = self.model(
-                    input_ids=batch["input_ids"].to(self.config["device"]),
-                    labels=batch["labels"].to(self.config["device"]),
-                    attention_mask=batch["attention_mask"].to(self.config["device"]),
+        for task_name in self.valid_dataloaders:
+            valid_loss = 0
+            metric_key_prefix = f"{task_name}_valid"
+
+            with torch.no_grad():
+                for _, batch in enumerate(tqdm(self.valid_dataloaders[task_name])):
+                    outputs = self.model(
+                        input_ids=batch["input_ids"].to(self.config["device"]),
+                        labels=batch["labels"].to(self.config["device"]),
+                        attention_mask=batch["attention_mask"].to(
+                            self.config["device"]
+                        ),
+                        task_ids=batch.get("task_ids", None),
+                    )
+
+                    preds = self.model.generate(
+                        input_ids=batch["input_ids"].to(self.config["device"]),
+                        labels=batch["labels"].to(self.config["device"]),
+                        attention_mask=batch["attention_mask"].to(
+                            self.config["device"]
+                        ),
+                        max_new_tokens=max_new_tokens,
+                        task_ids=batch.get("task_ids", None),
+                    )
+
+                    loss = outputs.loss
+                    valid_loss += loss.detach().float()
+                    metrics.update(
+                        self.metrics_fn[task_name]["compute_metrics"](
+                            eval_preds=EvalPrediction(
+                                predictions=preds,
+                                label_ids=batch["labels"],
+                                data_info=batch["extra_fields"],
+                            ),
+                            prefix=metric_key_prefix,
+                        )
+                    )
+
+            metrics.update(
+                self.metrics_fn[task_name]["compute_metrics_all"](
+                    prefix=metric_key_prefix
                 )
+            )
+            metrics.update(
+                {
+                    f"{metric_key_prefix}_loss": valid_loss.cpu()
+                    / len(self.valid_dataloaders[task_name])
+                }
+            )
+            metrics.update(
+                {
+                    f"{metric_key_prefix}_ppl": torch.exp(
+                        metrics[f"{metric_key_prefix}_loss"]
+                    )
+                }
+            )
 
-                preds = self.model.generate(
-                    input_ids=batch["input_ids"].to(self.config["device"]),
-                    labels=batch["labels"].to(self.config["device"]),
-                    attention_mask=batch["attention_mask"].to(self.config["device"]),
-                    max_new_tokens=max_new_tokens,
-                )
-
-                loss = outputs.loss
-                valid_loss += loss.detach().float()
-                metrics = self.compute_metrics(
-                    EvalPrediction(
-                        predictions=preds,
-                        label_ids=batch["labels"],
-                        data_info=batch["extra_fields"],
-                    ),
-                    self.tokenizer,
-                    self.config,
-                    metric_key_prefix,
-                )
-
-        metrics = self.compute_metrics_all(metric_key_prefix)
-        metrics.update(
-            {f"{metric_key_prefix}_loss": valid_loss.cpu() / len(self.valid_dataloader)}
-        )
-        metrics.update(
-            {
-                f"{metric_key_prefix}_ppl": torch.exp(
-                    metrics[f"{metric_key_prefix}_loss"]
-                )
-            }
-        )
-
-        self.reset_metrics()
+            self.metrics_fn[task_name]["reset_metrics"]()
 
         return metrics
 
@@ -189,54 +181,68 @@ class Trainer:
 
         model.to(self.config["device"])
         model.eval()
-        valid_loss = 0
         metrics = {}
-        metric_key_prefix = "test"
 
         max_new_tokens = self.config["max_target_length"]
 
-        for _, batch in enumerate(tqdm(self.test_dataloader)):
-            # batch = {k: v.to(config["device"]) for k, v in batch.items()}
+        for task_name in self.test_dataloaders:
+            valid_loss = 0
+            metric_key_prefix = f"{task_name}_test"
+
             with torch.no_grad():
-                outputs = model(
-                    input_ids=batch["input_ids"].to(self.config["device"]),
-                    labels=batch["labels"].to(self.config["device"]),
-                    attention_mask=batch["attention_mask"].to(self.config["device"]),
-                )
+                for _, batch in enumerate(tqdm(self.test_dataloaders[task_name])):
+                    outputs = model(
+                        input_ids=batch["input_ids"].to(self.config["device"]),
+                        labels=batch["labels"].to(self.config["device"]),
+                        attention_mask=batch["attention_mask"].to(
+                            self.config["device"]
+                        ),
+                        task_ids=batch.get("task_ids", None),
+                    )
 
-            preds = model.generate(
-                input_ids=batch["input_ids"].to(self.config["device"]),
-                labels=batch["labels"].to(self.config["device"]),
-                attention_mask=batch["attention_mask"].to(self.config["device"]),
-                max_new_tokens=max_new_tokens,
+                    preds = model.generate(
+                        input_ids=batch["input_ids"].to(self.config["device"]),
+                        labels=batch["labels"].to(self.config["device"]),
+                        attention_mask=batch["attention_mask"].to(
+                            self.config["device"]
+                        ),
+                        max_new_tokens=max_new_tokens,
+                        task_ids=batch.get("task_ids", None),
+                    )
+
+                    loss = outputs.loss
+                    valid_loss += loss.detach().float()
+                    metrics.update(
+                        self.metrics_fn[task_name]["compute_metrics"](
+                            eval_preds=EvalPrediction(
+                                predictions=preds,
+                                label_ids=batch["labels"],
+                                data_info=batch["extra_fields"],
+                            ),
+                            prefix=metric_key_prefix,
+                        )
+                    )
+
+            metrics.update(
+                self.metrics_fn[task_name]["compute_metrics_all"](
+                    prefix=metric_key_prefix
+                )
+            )
+            metrics.update(
+                {
+                    f"{metric_key_prefix}_loss": valid_loss.cpu()
+                    / len(self.test_dataloaders[task_name])
+                }
+            )
+            metrics.update(
+                {
+                    f"{metric_key_prefix}_ppl": torch.exp(
+                        metrics[f"{metric_key_prefix}_loss"]
+                    )
+                }
             )
 
-            loss = outputs.loss
-            valid_loss += loss.detach().float()
-            metrics = self.compute_metrics(
-                EvalPrediction(
-                    predictions=preds,
-                    label_ids=batch["labels"],
-                    data_info=batch["extra_fields"],
-                ),
-                self.tokenizer,
-                self.config,
-                metric_key_prefix,
-            )
-
-        metrics = self.compute_metrics_all(metric_key_prefix)
-        metrics.update(
-            {f"{metric_key_prefix}_loss": valid_loss.cpu() / len(self.test_dataloader)}
-        )
-        metrics.update(
-            {
-                f"{metric_key_prefix}_ppl": torch.exp(
-                    metrics[f"{metric_key_prefix}_loss"]
-                )
-            }
-        )
-
-        self.reset_metrics()
+            self.metrics_fn[task_name]["reset_metrics"]()
 
         return metrics
 
@@ -245,8 +251,9 @@ class Trainer:
             self.metrics.update(self.train())
             self.metrics.update(self.valid())
 
-            if self.metrics["valid_loss"] < self.min_eval_loss:
-                self.min_eval_loss = self.metrics["valid_loss"]
+            self.metrics.update(self.get_avg(self.metrics, "valid_loss"))
+            if self.metrics["avg_valid_loss"] < self.min_eval_loss:
+                self.min_eval_loss = self.metrics["avg_valid_loss"]
                 artifact_name = f"{'_'.join(self.config['datasets'])}_{self.config['timestamp']}_{self.config['run']}"
                 checkpoint_name = os.path.join(
                     os.path.dirname(__file__),
@@ -268,6 +275,7 @@ class Trainer:
 
         test_metrics = self.test()
         self.metrics.update(test_metrics)
+        self.metrics.update(self.get_avg(self.metrics, "test_loss"))
 
         wandb.log(test_metrics)
         print("Test: ", test_metrics)

@@ -192,29 +192,49 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
 
     def get_prompt_embedding_to_save(self, adapter_name: str):
         prompt_encoder = self.prompt_encoder[adapter_name]
-        prompt_tokens = (
-            self.prompt_tokens[adapter_name]
-            .unsqueeze(0)
-            .expand(1, -1)
-            .to(prompt_encoder.embedding.weight.device)
-        )
-        prompt_embeddings = prompt_encoder(prompt_tokens)
-        return prompt_embeddings[0].detach().cpu()
 
-    def get_prompt(self, batch_size: int):
+        if type(prompt_encoder.embedding) == torch.nn.ModuleList:
+            prompt_tokens = self.prompt_tokens[adapter_name].to(
+                prompt_encoder.embedding[0].weight.device
+            )
+
+            prompt_embeddings = prompt_encoder(
+                prompt_tokens,
+                task_ids=torch.tensor(range(len(prompt_encoder.embedding))),
+            )
+        else:
+            prompt_tokens = self.prompt_tokens[adapter_name].to(
+                prompt_encoder.embedding.weight.device
+            )
+            prompt_embeddings = prompt_encoder(prompt_tokens, task_ids=None)
+        return prompt_embeddings.detach().cpu()
+
+    def get_prompt(self, batch_size: int, task_ids: List[int]):
         peft_config = self.active_peft_config
         prompt_encoder = self.prompt_encoder[self.active_adapter]
-        prompt_tokens = (
-            self.prompt_tokens[self.active_adapter]
-            .unsqueeze(0)
-            .expand(batch_size, -1)
-            .to(prompt_encoder.embedding.weight.device)
-        )
+        # print(prompt_encoder.embedding[0].weight.device)
+
+        if type(prompt_encoder.embedding) == torch.nn.ModuleList:
+            prompt_tokens = self.prompt_tokens[self.active_adapter].to(
+                prompt_encoder.embedding[0].weight.device
+            )
+        else:
+            prompt_tokens = (
+                self.prompt_tokens[self.active_adapter]
+                .unsqueeze(0)
+                .expand(batch_size, -1)
+                .to(prompt_encoder.embedding.weight.device)
+            )
 
         if peft_config.inference_mode:
-            prompts = prompt_encoder.embedding.weight.repeat(batch_size, 1, 1)
+            if task_ids is None:
+                prompts = prompt_encoder.embedding.weight.repeat(batch_size, 1, 1)
+            else:
+                prompts = torch.stack(
+                    [prompt_encoder.embedding[id].weight for id in task_ids]
+                )
         else:
-            prompts = prompt_encoder(prompt_tokens)
+            prompts = prompt_encoder(prompt_tokens, task_ids)
 
         return prompts
 
@@ -322,6 +342,7 @@ class PeftModelForSeq2SeqLM(PeftModel):
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
+        task_ids=None,
         **kwargs,
     ):
         peft_config = self.active_peft_config
@@ -358,7 +379,7 @@ class PeftModelForSeq2SeqLM(PeftModel):
                 (prefix_attention_mask, attention_mask), dim=1
             )
 
-        prompts = self.get_prompt(batch_size=batch_size)
+        prompts = self.get_prompt(batch_size=batch_size, task_ids=task_ids)
 
         if peft_config.peft_type == "attempt":
             prompts = self.get_instance_prompt(inputs_embeds, prompts)
@@ -390,9 +411,10 @@ class PeftModelForSeq2SeqLM(PeftModel):
         kwargs = deepcopy(kwargs)
 
         input_ids = kwargs.pop("input_ids")
+        task_ids = kwargs.pop("task_ids")
         inputs_embeds = self.word_embeddings(input_ids)
         batch_size = inputs_embeds.shape[0]
-        prompts = self.get_prompt(batch_size=batch_size)
+        prompts = self.get_prompt(batch_size=batch_size, task_ids=task_ids)
 
         if peft_config.peft_type == "attempt":
             prompts = self.get_instance_prompt(inputs_embeds, prompts)
