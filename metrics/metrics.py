@@ -87,6 +87,7 @@ class Accuracy(Metric):
         self.total += preds.size
 
     def compute(self):
+        # print("internal states:", self.correct, self.total)
         return 100 * self.correct.float() / self.total
 
 

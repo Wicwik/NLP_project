@@ -9,6 +9,8 @@ from transformers import (
 
 from cpeft import PeftModel
 
+# from peft import PeftModel
+
 from tqdm import tqdm
 
 from .utils import EvalPrediction
@@ -22,7 +24,7 @@ class Trainer:
         dataloaders,
         optimizer,
         tokenizer,
-        metric_fn,
+        metrics_fn,
         wandb=True,
     ):
         self.min_eval_loss = torch.inf
@@ -35,7 +37,7 @@ class Trainer:
         ) = dataloaders
         self.optimizer = optimizer
         self.tokenizer = tokenizer
-        self.metrics_fn = metric_fn
+        self.metrics_fn = metrics_fn
         self.metrics = {}
         self.wandb = wandb
 
@@ -55,10 +57,6 @@ class Trainer:
             name=f"{self.config['model_name_or_path']}_{'_'.join(self.config['datasets'])}_{self.config['timestamp']}_{self.config['run']}",
         )
 
-    def reset_metrics(self):
-        for n in self.metric_fs:
-            self.metric_fs[n].reset()
-
     def get_avg(self, metrics, keyword):
         s = 0
         count = 0
@@ -77,7 +75,7 @@ class Trainer:
         metrics = {}
         metric_key_prefix = "train"
 
-        for _, batch in enumerate(tqdm(self.train_dataloader)):
+        for i, batch in enumerate(tqdm(self.train_dataloader)):
             outputs = self.model(
                 input_ids=batch["input_ids"].to(self.config["device"]),
                 labels=batch["labels"].to(self.config["device"]),
@@ -93,6 +91,10 @@ class Trainer:
             self.lr_scheduler.step()
 
             self.optimizer.zero_grad()
+
+            # if i > 0 and i % 1000 == 0:
+            #     print(self.valid())
+            #     self.model.train()
 
         metrics.update(
             {f"{metric_key_prefix}_loss": train_loss.cpu() / len(self.train_dataloader)}
@@ -145,12 +147,16 @@ class Trainer:
                                 predictions=preds,
                                 label_ids=batch["labels"],
                                 data_info=batch["extra_fields"],
-                                prefix=metric_key_prefix,
-                            )
+                            ),
+                            prefix=metric_key_prefix,
                         )
                     )
 
-            metrics.update(self.metrics_fn[task_name]["compute_metrics_all"](prefix=metric_key_prefix))
+            metrics.update(
+                self.metrics_fn[task_name]["compute_metrics_all"](
+                    prefix=metric_key_prefix
+                )
+            )
             metrics.update(
                 {
                     f"{metric_key_prefix}_loss": valid_loss.cpu()
@@ -183,8 +189,8 @@ class Trainer:
             valid_loss = 0
             metric_key_prefix = f"{task_name}_test"
 
-            for _, batch in enumerate(tqdm(self.test_dataloaders[task_name])):
-                with torch.no_grad():
+            with torch.no_grad():
+                for _, batch in enumerate(tqdm(self.test_dataloaders[task_name])):
                     outputs = model(
                         input_ids=batch["input_ids"].to(self.config["device"]),
                         labels=batch["labels"].to(self.config["device"]),
@@ -194,28 +200,34 @@ class Trainer:
                         task_ids=batch.get("task_ids", None),
                     )
 
-                preds = model.generate(
-                    input_ids=batch["input_ids"].to(self.config["device"]),
-                    labels=batch["labels"].to(self.config["device"]),
-                    attention_mask=batch["attention_mask"].to(self.config["device"]),
-                    max_new_tokens=max_new_tokens,
-                    task_ids=batch.get("task_ids", None),
-                )
+                    preds = model.generate(
+                        input_ids=batch["input_ids"].to(self.config["device"]),
+                        labels=batch["labels"].to(self.config["device"]),
+                        attention_mask=batch["attention_mask"].to(
+                            self.config["device"]
+                        ),
+                        max_new_tokens=max_new_tokens,
+                        task_ids=batch.get("task_ids", None),
+                    )
 
-                loss = outputs.loss
-                valid_loss += loss.detach().float()
-                metrics.update(
+                    loss = outputs.loss
+                    valid_loss += loss.detach().float()
+                    metrics.update(
                         self.metrics_fn[task_name]["compute_metrics"](
                             eval_preds=EvalPrediction(
                                 predictions=preds,
                                 label_ids=batch["labels"],
                                 data_info=batch["extra_fields"],
-                                prefix=metric_key_prefix,
-                            )
+                            ),
+                            prefix=metric_key_prefix,
                         )
                     )
 
-            metrics.update(self.metrics_fn[task_name]["compute_metrics_all"](prefix=metric_key_prefix))
+            metrics.update(
+                self.metrics_fn[task_name]["compute_metrics_all"](
+                    prefix=metric_key_prefix
+                )
+            )
             metrics.update(
                 {
                     f"{metric_key_prefix}_loss": valid_loss.cpu()

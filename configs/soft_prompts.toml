@@ -22,33 +22,8 @@ split_validation_test = true
 output_dir = "soft_prompts"
 warmup_steps = 500
 shared_attn = false
-pad_to_max_length =  false
-
-[[configs]]
-datasets = ["mrpc"]
-dataset_config_name = ["en"]
-device = "cuda"
-learning_rate = 0.3
-model_name_or_path = "t5-base"
-tokenizer_name_or_path = "t5-base"
-max_target_length = 128
-num_epochs = 5
-batch_size = 32
-peft_type = "prompt_tuning"
-prompt_init = "vocab"
-task_type = "seq_2_seq_lm"
-num_virtual_tokens = 50
-n_runs = 1
-wandb_project = "soft_prompt_experiments"
-max_source_length = 256
-split_validation_test = true
-# max_train_samples = 1000
-# max_valid_samples = 500
-# max_test_samples = 500
-output_dir = "soft_prompts"
-warmup_steps = 500
-shared_attn = false
-pad_to_max_length =  false
+pad_to_max_length = false
+weight_decay = 1e-5
 
 [[configs]]
 datasets = ["sst2"]
@@ -74,7 +49,8 @@ split_validation_test = true
 output_dir = "soft_prompts"
 warmup_steps = 500
 shared_attn = false
-pad_to_max_length =  false
+pad_to_max_length = false
+weight_decay = 1e-5
 
 [[configs]]
 datasets = ["qnli"]
@@ -100,7 +76,8 @@ split_validation_test = true
 output_dir = "soft_prompts"
 warmup_steps = 500
 shared_attn = false
-pad_to_max_length =  false
+pad_to_max_length = false
+weight_decay = 1e-5
 
 [[configs]]
 datasets = ["mnli"]
@@ -126,7 +103,8 @@ split_validation_test = true
 output_dir = "soft_prompts"
 warmup_steps = 500
 shared_attn = false
-pad_to_max_length =  false
+pad_to_max_length = false
+weight_decay = 1e-5
 
 [[configs]]
 datasets = ["qqp"]
@@ -152,7 +130,8 @@ split_validation_test = true
 output_dir = "soft_prompts"
 warmup_steps = 500
 shared_attn = false
-pad_to_max_length =  false
+pad_to_max_length = false
+weight_decay = 1e-5
 
 [[configs]]
 datasets = ["superglue-record"]
@@ -178,4 +157,5 @@ split_validation_test = true
 output_dir = "soft_prompts"
 warmup_steps = 500
 shared_attn = false
-pad_to_max_length =  false
+pad_to_max_length = false
+weight_decay = 1e-5

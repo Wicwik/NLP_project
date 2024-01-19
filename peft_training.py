@@ -6,6 +6,8 @@ import os
 import torch
 
 # from peft import TaskType
+# from peft import get_peft_model,PromptTuningConfig
+
 from cpeft import get_peft_model
 from transformers import (
     AutoTokenizer,
@@ -61,7 +63,7 @@ class PeftTraining:
 
         return inputs
 
-    def get_data(self, config, tokenizer, add_prefix=True):
+    def get_data(self, config, tokenizer):
         cols_to_remove = ["source", "target"]
 
         max_target_lengths = [
@@ -236,7 +238,7 @@ class PeftTraining:
             for name in test_datasets
         }
 
-        print(train_dataset)
+        # print(train_dataset)
 
         return train_dataloader, valid_dataloaders, test_dataloaders
 
@@ -250,12 +252,14 @@ class PeftTraining:
             result = {}
 
             for n, m in metrics.items():
+                # print("compute_metrics_all:", id(m))
+
                 if "squad" in n.lower():
                     squad_m = m.compute()
                     result[f"{prefix}_em"] = squad_m["em"]
                     result[f"{prefix}_f1"] = squad_m["f1"]
                 else:
-                    result[f"{prefix}_{n}"]: m.compute()
+                    result[f"{prefix}_{n}"] = m.compute()
 
             return result
 
@@ -272,12 +276,16 @@ class PeftTraining:
             result = {}
 
             for n, m in metrics.items():
+                # print("compute_metrics:", id(m))
+
                 if "squad" in n.lower():
                     squad_m = m(decoded_preds, decoded_labels)
                     result[f"{prefix}_em"] = squad_m["em"]
                     result[f"{prefix}_f1"] = squad_m["f1"]
                 else:
-                    result[f"{prefix}_{n}"]: m(decoded_preds, decoded_labels)
+                    result[f"{prefix}_{n}"] = m(decoded_preds, decoded_labels)
+
+            # print(decoded_preds, decoded_labels, result)
 
             return result
 
@@ -302,11 +310,10 @@ class PeftTraining:
                     compute_metrics_all,
                     metrics=metrics,
                 ),
-                "reset_metrics": functools.partial(reset_metrics, metrics=metrics)
+                "reset_metrics": functools.partial(reset_metrics, metrics=metrics),
             }
 
         return {task: tasks_metrics(task) for task in config["datasets"]}
-
 
     def run(self):
         for config in self.configs:
@@ -352,14 +359,16 @@ class PeftTraining:
                 # model.prompt_encoder.peft.embedding.weight = pretrained_attempt
                 # print(model.prompt_encoder.peft.embedding.weight)
 
+                # model.prompt_encoder.peft.embedding.weight = torch.load("soft_prompts/sst2.bin")
+
                 model.print_trainable_parameters()
                 model.to(config["device"])
                 config["timestamp"] = datetime.now().strftime("%m%d%Y%H%M%S")
 
-                metrics_fn = self.build_compute_metrics_fn(config, tokenizer, config)
-
                 optimizer = torch.optim.AdamW(
-                    model.parameters(), lr=config["learning_rate"]
+                    model.parameters(),
+                    lr=config["learning_rate"],
+                    weight_decay=config.get("weight_decay", 0.01),
                 )
 
                 tokenizer = AutoTokenizer.from_pretrained(
@@ -372,13 +381,16 @@ class PeftTraining:
                 if tokenizer.pad_token_id is None:
                     tokenizer.pad_token_id = tokenizer.eos_token_id
 
+                metrics_fn = self.build_compute_metrics_fn(tokenizer, config)
+                # print(metrics_fn)
+
                 trainer = Trainer(
                     model=model,
                     config=config,
                     dataloaders=self.get_data(config, tokenizer),
                     optimizer=optimizer,
                     tokenizer=tokenizer,
-                    metric_fs=metrics_fn,
+                    metrics_fn=metrics_fn,
                 )
 
                 trainer.run()
