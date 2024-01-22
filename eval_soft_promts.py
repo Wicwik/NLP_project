@@ -81,51 +81,6 @@ class PeftTraining:
             max_target_lengths,
         )
 
-        train_datasets = [
-            AutoTask.get(dataset_name, config).get(
-                split="train",
-                split_validation_test=config["split_validation_test"],
-                add_prefix=True,
-                n_obs=config["max_train_samples"]
-                if "max_train_samples" in config
-                else None,
-            )
-            for dataset_name in config["datasets"]
-        ]
-
-        for i, train_dataset in enumerate(train_datasets):
-            if config["shared_attn"] is True:
-                train_datasets[i] = train_datasets[i].map(
-                    functools.partial(
-                        self.preprocess_function,
-                        config=config,
-                        tokenizer=tokenizer,
-                        max_target_length=max_target_lengths[i],
-                        task_id=i,
-                    ),
-                    batched=True,
-                    load_from_cache_file=False,
-                    desc="Running preprocess_function on train_dataset",
-                )
-            else:
-                train_datasets[i] = train_datasets[i].map(
-                    functools.partial(
-                        self.preprocess_function,
-                        config=config,
-                        tokenizer=tokenizer,
-                        max_target_length=max_target_lengths[i],
-                    ),
-                    batched=True,
-                    load_from_cache_file=False,
-                    desc="Running preprocess_function on train_dataset",
-                )
-
-            train_datasets[i] = train_datasets[i].remove_columns(
-                cols_to_remove + ["extra_fields"]
-            )
-
-        train_dataset = concatenate_datasets(train_datasets)
-
         valid_datasets = {
             dataset_name: AutoTask.get(dataset_name, config).get(
                 split="validation",
@@ -213,14 +168,6 @@ class PeftTraining:
         else:
             data_collator = TaskDataCollatorForSeq2Seq(tokenizer, return_tensors="pt")
 
-        train_dataloader = DataLoader(
-            train_dataset,
-            shuffle=True,
-            collate_fn=data_collator,
-            batch_size=config["batch_size"],
-            pin_memory=True,
-        )
-
         valid_dataloaders = {
             name: DataLoader(
                 valid_datasets[name],
@@ -243,7 +190,7 @@ class PeftTraining:
 
         # print(train_dataset)
 
-        return train_dataloader, valid_dataloaders, test_dataloaders
+        return [], valid_dataloaders, test_dataloaders
 
     # compute metrics for multi task setting
     def build_compute_metrics_fn(self, tokenizer, config):
@@ -343,59 +290,69 @@ class PeftTraining:
                     peft_config.shared_attn = config["shared_attn"]
                     peft_config.n_targets = len(config["datasets"])
 
-            # peft_config = PromptTuningConfig(task_type=TaskType.SEQ_2_SEQ_LM, num_virtual_tokens=config["num_virtual_tokens"])
+            model = AutoModelForSeq2SeqLM.from_pretrained(config["model_name_or_path"])
+            model = get_peft_model(model, peft_config)
 
-            for nr in range(config["n_runs"]):
-                config["run"] = nr + 1
+            dataset_name = config["datasets"][0]
 
-                print(f"Started {config['run']}. run...")
+            if "superglue" in dataset_name:
+                dataset_name = dataset_name.split("-")[1]
 
-                model = AutoModelForSeq2SeqLM.from_pretrained(
-                    config["model_name_or_path"]
-                )
-                model = get_peft_model(model, peft_config)
+            model.prompt_encoder.peft.embedding.weight = torch.nn.Parameter(
+                torch.load(f"soft_prompts/ours/{dataset_name}.bin")["prompt_embeddings"]
+            )
 
-                # pretrained_attempt = torch.load(os.path.join(config["output_dir"], "attempt_original/MNLI/adapter_model.bin"))
-                # print(pretrained_attempt, pretrained_attempt.size())
-                # print(model.prompt_encoder.peft.embedding.weight)
+            model.print_trainable_parameters()
+            model.to(config["device"])
+            config["timestamp"] = datetime.now().strftime("%m%d%Y%H%M%S")
 
-                # model.prompt_encoder.peft.embedding.weight = pretrained_attempt
-                # print(model.prompt_encoder.peft.embedding.weight)
+            optimizer = torch.optim.AdamW(
+                model.parameters(),
+                lr=config["learning_rate"],
+                weight_decay=config.get("weight_decay", 0.01),
+            )
 
-                # model.prompt_encoder.peft.embedding.weight = torch.load("soft_prompts/sst2.bin")
+            tokenizer = AutoTokenizer.from_pretrained(
+                config["tokenizer_name_or_path"],
+                model_max_length=512,
+                use_fast=True,
+            )
+            model.resize_token_embeddings(len(tokenizer))
 
-                model.print_trainable_parameters()
-                model.to(config["device"])
-                config["timestamp"] = datetime.now().strftime("%m%d%Y%H%M%S")
+            if tokenizer.pad_token_id is None:
+                tokenizer.pad_token_id = tokenizer.eos_token_id
 
-                optimizer = torch.optim.AdamW(
-                    model.parameters(),
-                    lr=config["learning_rate"],
-                    weight_decay=config.get("weight_decay", 0.01),
-                )
+            metrics_fn = self.build_compute_metrics_fn(tokenizer, config)
+            # print(metrics_fn)
 
-                tokenizer = AutoTokenizer.from_pretrained(
-                    config["tokenizer_name_or_path"],
-                    model_max_length=512,
-                    use_fast=True,
-                )
-                model.resize_token_embeddings(len(tokenizer))
+            trainer = Trainer(
+                model=model,
+                config=config,
+                dataloaders=self.get_data(config, tokenizer),
+                optimizer=optimizer,
+                tokenizer=tokenizer,
+                metrics_fn=metrics_fn,
+                wandb=False,
+            )
 
-                if tokenizer.pad_token_id is None:
-                    tokenizer.pad_token_id = tokenizer.eos_token_id
+            print(trainer.valid())
+            print(trainer.test(load_model=False))
 
-                metrics_fn = self.build_compute_metrics_fn(tokenizer, config)
-                # print(metrics_fn)
 
-                trainer = Trainer(
-                    model=model,
-                    config=config,
-                    dataloaders=self.get_data(config, tokenizer),
-                    optimizer=optimizer,
-                    tokenizer=tokenizer,
-                    metrics_fn=metrics_fn,
-                )
+import argparse
+import tomllib
 
-                trainer.run()
+parser = argparse.ArgumentParser(
+    prog="Attempt replication",
+    description="Run attempt or prompt tuning PEFT method based on provided config.",
+)
 
-                print(f"Finished {config['run']}. run...")
+parser.add_argument("filename", help="Filename of a config to run.")
+args = parser.parse_args()
+
+data = None
+with open(os.path.join(os.path.dirname(__file__), args.filename), "rb") as f:
+    data = tomllib.load(f)
+
+training = PeftTraining(configs=data["configs"])
+training.run()

@@ -175,9 +175,14 @@ class Trainer:
 
         return metrics
 
-    def test(self):
-        model = AutoModelForSeq2SeqLM.from_pretrained(self.config["model_name_or_path"])
-        model = PeftModel.from_pretrained(model, self.config["best_model_path"])
+    def test(self, load_model=True):
+        model = self.model
+
+        if load_model:
+            model = AutoModelForSeq2SeqLM.from_pretrained(
+                self.config["model_name_or_path"]
+            )
+            model = PeftModel.from_pretrained(model, self.config["best_model_path"])
 
         model.to(self.config["device"])
         model.eval()
@@ -262,22 +267,26 @@ class Trainer:
                 self.model.save_pretrained(checkpoint_name)
                 self.config["best_model_path"] = checkpoint_name
 
-                artifact = wandb.Artifact(
-                    name=artifact_name,
-                    type="weights",
-                )
+                if self.wandb:
+                    artifact = wandb.Artifact(
+                        name=artifact_name,
+                        type="weights",
+                    )
 
-                artifact.add_dir(local_path=checkpoint_name)
-                self.wandb_run.log_artifact(artifact)
+                    artifact.add_dir(local_path=checkpoint_name)
+                    self.wandb_run.log_artifact(artifact)
 
-            wandb.log(self.metrics)
+            if self.wandb:
+                wandb.log(self.metrics)
+
             print(f"{epoch=},", self.metrics)
 
         test_metrics = self.test()
         self.metrics.update(test_metrics)
         self.metrics.update(self.get_avg(self.metrics, "test_loss"))
 
-        wandb.log(test_metrics)
+        if self.wandb:
+            wandb.log(test_metrics)
         print("Test: ", test_metrics)
         print("Run metrics: ", self.metrics)
 
