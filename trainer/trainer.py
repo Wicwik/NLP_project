@@ -62,7 +62,7 @@ class Trainer:
         count = 0
 
         for n in metrics:
-            if keyword in n:
+            if keyword in n and "avg" not in n:
                 count += 1
                 s += metrics[n]
 
