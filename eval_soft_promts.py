@@ -13,7 +13,6 @@ from transformers import (
     AutoTokenizer,
     AutoModelForSeq2SeqLM,
 )
-from datasets import concatenate_datasets
 from torch.utils.data import DataLoader
 from datetime import datetime
 
@@ -21,13 +20,14 @@ from tasks import AutoTask, TaskDataCollatorForSeq2Seq, ExtraDefaultDataCollator
 from trainer import Trainer
 
 
-class PeftTraining:
+class PeftEval:
     configs = None
     use_wandb = None
 
-    def __init__(self, configs, use_wandb=True):
+    def __init__(self, configs, soft_prompts_dir, use_wandb=True):
         self.configs = configs
         self.use_wandb = use_wandb
+        self.soft_prompts_dir = soft_prompts_dir
 
     def preprocess_function(
         self, examples, config, tokenizer, max_target_length, task_id=None
@@ -298,9 +298,13 @@ class PeftTraining:
             if "superglue" in dataset_name:
                 dataset_name = dataset_name.split("-")[1]
 
-            model.prompt_encoder.peft.embedding.weight = torch.nn.Parameter(
-                torch.load(f"soft_prompts/ours/{dataset_name}.bin")["prompt_embeddings"]
-            )
+            weights = torch.load(f"{self.soft_prompts_dir}/{dataset_name}.bin")
+            if type(weights) == torch.nn.ModuleDict:
+                model.prompt_encoder.peft.embedding.weight = torch.nn.Parameter(
+                    weights["prompt_embeddings"]
+                )
+            else:
+                model.prompt_encoder.peft.embedding.weight = torch.nn.Parameter(weights)
 
             model.print_trainable_parameters()
             model.to(config["device"])
@@ -348,11 +352,14 @@ parser = argparse.ArgumentParser(
 )
 
 parser.add_argument("filename", help="Filename of a config to run.")
+parser.add_argument(
+    "directory", help="Directory to saved files that will be evaluated."
+)
 args = parser.parse_args()
 
 data = None
 with open(os.path.join(os.path.dirname(__file__), args.filename), "rb") as f:
     data = tomllib.load(f)
 
-training = PeftTraining(configs=data["configs"])
+training = PeftEval(configs=data["configs"], soft_prompts_dir=args.directory)
 training.run()
