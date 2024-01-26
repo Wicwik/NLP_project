@@ -43,6 +43,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
                 else:
                     prefix_embeddings.append(emb.to(self.device))
 
+            # print(prefix_embeddings)
             self.attention_module[adapter_name].store_prefix_weights(prefix_embeddings)
 
     def save_pretrained(

@@ -39,16 +39,27 @@ def set_peft_model_state_dict(model, peft_state_dict, adapter_name="peft"):
                 f"{i}.weight": emb
                 for i, emb in enumerate(peft_model_state_dict["prompt_embeddings"])
             }
-            model.prompt_encoder[adapter_name].embedding.load_state_dict(emb_state_dict)
+            model.prompt_encoder[adapter_name].embedding.load_state_dict(emb_state_dict, strict=True)
         else:
             model.prompt_encoder[adapter_name].embedding.load_state_dict(
                 {"weight": peft_model_state_dict["prompt_embeddings"]}, strict=True
             )
 
         if config.peft_type == "attempt":
-            model.attention_module.load_state_dict(
-                peft_model_state_dict["attention_module"]
+
+            print(peft_model_state_dict["attention_module"].keys())
+            
+            model.attention_module.peft.attn_W_down.load_state_dict(
+                {"weight": peft_model_state_dict["attention_module"]["peft.attn_W_down.weight"]}
             )
+            model.attention_module.peft.attn_W_up.load_state_dict(
+                {"weight": peft_model_state_dict["attention_module"]["peft.attn_W_up.weight"]}
+            )
+            model.attention_module.peft.layer_norm.load_state_dict(
+                {"weight": peft_model_state_dict["attention_module"]["peft.layer_norm.weight"],
+                 "bias": peft_model_state_dict["attention_module"]["peft.layer_norm.bias"]}
+            )
+
 
     return load_result
 

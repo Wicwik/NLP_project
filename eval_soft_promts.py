@@ -24,10 +24,10 @@ class PeftEval:
     configs = None
     use_wandb = None
 
-    def __init__(self, configs, soft_prompts_dir, use_wandb=True):
+    def __init__(self, configs, dir, use_wandb=True):
         self.configs = configs
         self.use_wandb = use_wandb
-        self.soft_prompts_dir = soft_prompts_dir
+        self.dir = dir
 
     def preprocess_function(
         self, examples, config, tokenizer, max_target_length, task_id=None
@@ -235,7 +235,7 @@ class PeftEval:
                 else:
                     result[f"{prefix}_{n}"] = m(decoded_preds, decoded_labels)
 
-            # print(decoded_preds, decoded_labels, result)
+            print(decoded_preds, decoded_labels, result)
 
             return result
 
@@ -291,20 +291,33 @@ class PeftEval:
                     peft_config.n_targets = len(config["datasets"])
 
             model = AutoModelForSeq2SeqLM.from_pretrained(config["model_name_or_path"])
-            model = get_peft_model(model, peft_config)
-
             dataset_name = config["datasets"][0]
 
-            if "superglue" in dataset_name:
-                dataset_name = dataset_name.split("-")[1]
+            if config["peft_type"] == "prompt_tunning":
+                model = get_peft_model(model, peft_config)
+                if "superglue" in dataset_name:
+                    dataset_name = dataset_name.split("-")[1]
 
-            weights = torch.load(f"{self.soft_prompts_dir}/{dataset_name}.bin")
-            if type(weights) == torch.nn.ModuleDict:
-                model.prompt_encoder.peft.embedding.weight = torch.nn.Parameter(
-                    weights["prompt_embeddings"]
-                )
-            else:
-                model.prompt_encoder.peft.embedding.weight = torch.nn.Parameter(weights)
+                weights = torch.load(f"{self.dir}/{dataset_name}.bin")
+                if type(weights) == torch.nn.ModuleDict:
+                    model.prompt_encoder.peft.embedding.weight = torch.nn.Parameter(
+                        weights["prompt_embeddings"]
+                    )
+                else:
+                    model.prompt_encoder.peft.embedding.weight = torch.nn.Parameter(
+                        weights
+                    )
+
+            if config["peft_type"] == "attempt":
+                from cpeft import PeftModel
+
+                model = PeftModel.from_pretrained(model, self.dir)
+                # print(model.prompt_encoder.peft.embedding[0].weight)
+                # print(model.attention_module.peft.attn_W_down.weight)
+                # print(model.attention_module.peft.attn_W_up.weight)
+                # print(model.attention_module.peft.layer_norm.weight)
+
+                # print(model.attention_module.state_dict())
 
             model.print_trainable_parameters()
             model.to(config["device"])
@@ -361,5 +374,5 @@ data = None
 with open(os.path.join(os.path.dirname(__file__), args.filename), "rb") as f:
     data = tomllib.load(f)
 
-training = PeftEval(configs=data["configs"], soft_prompts_dir=args.directory)
+training = PeftEval(configs=data["configs"], dir=args.directory)
 training.run()
