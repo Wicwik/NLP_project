@@ -11,6 +11,14 @@ pip install -r requirements.txt
 python run.py [config]
 ```
 
+### Experiment results
+All of our experiments results can be found at our Weights & Biases projects:
+- [Prompt tuning](https://wandb.ai/rbelanec/prompt_tunning)
+- [ATTEMPT single authors' prompts](https://wandb.ai/rbelanec/attempt_single_experiments)
+- [ATTEMPT single our prompts](https://wandb.ai/rbelanec/attempt_single_ours_experiments)
+- [ATTEMPT multi authors' prompts](https://wandb.ai/rbelanec/attempt_multi_experiments)
+- [ATTEMPT multi our prompts](https://wandb.ai/rbelanec/attempt_multi_ours_experiments)
+
 ### References
 ASAI, Akari, et al. [Attempt: Parameter-efficient multi-task tuning via attentional mixtures of soft prompts](https://aclanthology.org/2022.emnlp-main.446.pdf). In: Proceedings of the 2022 Conference on Empirical Methods in Natural Language Processing. 2022. p. 6655-6672.
 
