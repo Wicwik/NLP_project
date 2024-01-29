@@ -12,7 +12,7 @@ python run.py [config]
 ```
 
 ### Experiment results
-All of our experiments results can be found at our Weights & Biases projects:
+All of our experiments details and saved data can be found at our Weights & Biases projects:
 - [Prompt tuning](https://wandb.ai/rbelanec/prompt_tunning)
 - [ATTEMPT single authors' prompts](https://wandb.ai/rbelanec/attempt_single_experiments)
 - [ATTEMPT single our prompts](https://wandb.ai/rbelanec/attempt_single_ours_experiments)
