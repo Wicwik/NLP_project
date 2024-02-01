@@ -4,3 +4,4 @@ __pycache__/
 *wandb
 *adapter_config.json
 *.bin
+*.ipynb_checkpoints
