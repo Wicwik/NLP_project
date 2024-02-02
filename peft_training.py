@@ -86,9 +86,11 @@ class PeftTraining:
                 split="train",
                 split_validation_test=config["split_validation_test"],
                 add_prefix=True,
-                n_obs=config["max_train_samples"]
-                if "max_train_samples" in config
-                else None,
+                n_obs=(
+                    config["max_train_samples"]
+                    if "max_train_samples" in config
+                    else None
+                ),
             )
             for dataset_name in config["datasets"]
         ]
@@ -131,9 +133,11 @@ class PeftTraining:
                 split="validation",
                 split_validation_test=config["split_validation_test"],
                 add_prefix=True,
-                n_obs=config["max_valid_samples"]
-                if "max_valid_samples" in config
-                else None,
+                n_obs=(
+                    config["max_valid_samples"]
+                    if "max_valid_samples" in config
+                    else None
+                ),
             )
             for dataset_name in config["datasets"]
         }
@@ -172,9 +176,9 @@ class PeftTraining:
                 split="test",
                 split_validation_test=config["split_validation_test"],
                 add_prefix=True,
-                n_obs=config["max_test_samples"]
-                if "max_test_samples" in config
-                else None,
+                n_obs=(
+                    config["max_test_samples"] if "max_test_samples" in config else None
+                ),
             )
             for dataset_name in config["datasets"]
         }

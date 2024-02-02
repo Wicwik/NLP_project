@@ -86,9 +86,11 @@ class PeftEval:
                 split="validation",
                 split_validation_test=config["split_validation_test"],
                 add_prefix=True,
-                n_obs=config["max_valid_samples"]
-                if "max_valid_samples" in config
-                else None,
+                n_obs=(
+                    config["max_valid_samples"]
+                    if "max_valid_samples" in config
+                    else None
+                ),
             )
             for dataset_name in config["datasets"]
         }
@@ -127,9 +129,9 @@ class PeftEval:
                 split="test",
                 split_validation_test=config["split_validation_test"],
                 add_prefix=True,
-                n_obs=config["max_test_samples"]
-                if "max_test_samples" in config
-                else None,
+                n_obs=(
+                    config["max_test_samples"] if "max_test_samples" in config else None
+                ),
             )
             for dataset_name in config["datasets"]
         }
@@ -235,7 +237,7 @@ class PeftEval:
                 else:
                     result[f"{prefix}_{n}"] = m(decoded_preds, decoded_labels)
 
-            print(decoded_preds, decoded_labels, result)
+            # print(decoded_preds, decoded_labels, result)
 
             return result
 
@@ -312,6 +314,7 @@ class PeftEval:
                 from cpeft import PeftModel
 
                 model = PeftModel.from_pretrained(model, self.dir)
+                model._peft_config[model.active_adapter].inference_mode = False
                 # print(model.prompt_encoder.peft.embedding[0].weight)
                 # print(model.attention_module.peft.attn_W_down.weight)
                 # print(model.attention_module.peft.attn_W_up.weight)
@@ -342,6 +345,14 @@ class PeftEval:
             metrics_fn = self.build_compute_metrics_fn(tokenizer, config)
             # print(metrics_fn)
 
+            import wandb
+
+            run = wandb.init(
+                project=config["wandb_project"],
+                config=config,
+                name=f"eval_{self.dir.split('/')[-1]}_{config['timestamp']}",
+            )
+
             trainer = Trainer(
                 model=model,
                 config=config,
@@ -352,8 +363,15 @@ class PeftEval:
                 wandb=False,
             )
 
-            print(trainer.valid())
-            print(trainer.test(load_model=False))
+            valid_res = trainer.valid()
+            print(valid_res)
+            wandb.log(valid_res)
+
+            test_res = trainer.test(load_model=False)
+            print(test_res)
+            wandb.log(test_res)
+
+            run.finish()
 
 
 import argparse

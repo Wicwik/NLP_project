@@ -22,16 +22,16 @@ cpeft_config = AttemptConfig(
     prompt_init="embedding_multi",
     prompt_init_embedding="soft_prompts/mnli.bin",
     prompt_embedding_paths=[
-        "soft_prompts/mnli.bin",
-        "soft_prompts/qnli.bin",
-        "soft_prompts/qqp.bin",
-        "soft_prompts/record.bin",
-        "soft_prompts/squad.bin",
-        "soft_prompts/sst2.bin",
+        "soft_prompts/ours/mnli.bin",
+        "soft_prompts/ours/qnli.bin",
+        "soft_prompts/ours/qqp.bin",
+        "soft_prompts/ours/record.bin",
+        "soft_prompts/ours/squad.bin",
+        "soft_prompts/ours/sst2.bin",
     ],
     prefix_num=6,
     shared_attn=True,
-    n_targets=2,
+    n_targets=8,
 )
 
 model = AutoModelForSeq2SeqLM.from_pretrained("t5-base")
@@ -43,6 +43,7 @@ weights = [
 
 model.print_trainable_parameters()
 
+
 model.save_pretrained(cpeft_save)
 
 new_model = AutoModelForSeq2SeqLM.from_pretrained("t5-base")
@@ -53,7 +54,7 @@ new_weights = [
 ]
 
 # print(str(new_model._peft_config) == str(model._peft_config))
-print(model)
+# print(model)
 
 assert str(model) == str(new_model), "Model is not the same after saving and loading."
 
@@ -62,5 +63,12 @@ for i, _ in enumerate(model.prompt_encoder["peft"].embedding):
         model.prompt_encoder["peft"].embedding[i].weight
         == new_model.prompt_encoder["peft"].embedding[i].weight
     ).all(), "Prompt embeddings must be the same after save and load."
+
+new_params = list(new_model.named_parameters())
+for i, (n, param) in enumerate(model.named_parameters()):
+    if param.requires_grad:
+        # print(n, param)
+        print(new_params[i])
+        print(new_params[i][1] == param)
 
 utils.passed(__file__)

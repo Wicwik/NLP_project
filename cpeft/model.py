@@ -228,6 +228,7 @@ class PeftModel(PushToHubMixin, torch.nn.Module):
             )
 
         if peft_config.inference_mode:
+            # print("inference")
             if task_ids is None:
                 prompts = prompt_encoder.embedding.weight.repeat(batch_size, 1, 1)
             else:

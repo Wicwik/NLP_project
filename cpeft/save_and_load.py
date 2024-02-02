@@ -35,11 +35,13 @@ def set_peft_model_state_dict(model, peft_state_dict, adapter_name="peft"):
     load_result = model.load_state_dict(peft_model_state_dict, strict=False)
     if config.is_prompt_learning:
         if type(model.prompt_encoder[adapter_name].embedding) == torch.nn.ModuleList:
-            emb_state_dict = {
-                f"{i}.weight": emb
-                for i, emb in enumerate(peft_model_state_dict["prompt_embeddings"])
-            }
-            model.prompt_encoder[adapter_name].embedding.load_state_dict(emb_state_dict, strict=True)
+            for i, emb in enumerate(peft_model_state_dict["prompt_embeddings"]):
+                # print(model.prompt_encoder[adapter_name].embedding)
+                model.prompt_encoder[adapter_name].embedding[i].weight = (
+                    torch.nn.Parameter(emb)
+                )
+
+            # print("after_loading:", list(model.prompt_encoder[adapter_name].embedding.named_parameters()))
         else:
             model.prompt_encoder[adapter_name].embedding.load_state_dict(
                 {"weight": peft_model_state_dict["prompt_embeddings"]}, strict=True
@@ -48,18 +50,31 @@ def set_peft_model_state_dict(model, peft_state_dict, adapter_name="peft"):
         if config.peft_type == "attempt":
 
             print(peft_model_state_dict["attention_module"].keys())
-            
+
             model.attention_module.peft.attn_W_down.load_state_dict(
-                {"weight": peft_model_state_dict["attention_module"]["peft.attn_W_down.weight"]}
+                {
+                    "weight": peft_model_state_dict["attention_module"][
+                        "peft.attn_W_down.weight"
+                    ]
+                }
             )
             model.attention_module.peft.attn_W_up.load_state_dict(
-                {"weight": peft_model_state_dict["attention_module"]["peft.attn_W_up.weight"]}
+                {
+                    "weight": peft_model_state_dict["attention_module"][
+                        "peft.attn_W_up.weight"
+                    ]
+                }
             )
             model.attention_module.peft.layer_norm.load_state_dict(
-                {"weight": peft_model_state_dict["attention_module"]["peft.layer_norm.weight"],
-                 "bias": peft_model_state_dict["attention_module"]["peft.layer_norm.bias"]}
+                {
+                    "weight": peft_model_state_dict["attention_module"][
+                        "peft.layer_norm.weight"
+                    ],
+                    "bias": peft_model_state_dict["attention_module"][
+                        "peft.layer_norm.bias"
+                    ],
+                }
             )
-
 
     return load_result
 
