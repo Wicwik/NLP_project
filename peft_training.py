@@ -325,7 +325,7 @@ class PeftTraining:
     def run(self):
         for config in self.configs:
             config["output_dir"] = os.path.join(
-                os.path.dirname(__file__), config["output_dir"]
+                os.path.dirname(__file__), f"experiments/{config['output_dir']}"
             )
 
             from cpeft.mapping import PEFT_TYPE_TO_CONFIG_MAPPING

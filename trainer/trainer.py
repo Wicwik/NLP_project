@@ -182,9 +182,7 @@ class Trainer:
             model = AutoModelForSeq2SeqLM.from_pretrained(
                 self.config["model_name_or_path"]
             )
-            model = PeftModel.from_pretrained(
-                model, f"experiments/{self.config['best_model_path']}"
-            )
+            model = PeftModel.from_pretrained(model, self.config["best_model_path"])
 
         model.to(self.config["device"])
         model.eval()
@@ -262,10 +260,8 @@ class Trainer:
             if self.metrics["avg_valid_loss"] < self.min_eval_loss:
                 self.min_eval_loss = self.metrics["avg_valid_loss"]
                 artifact_name = f"{'_'.join(self.config['datasets'])}_{self.config['timestamp']}_{self.config['run']}"
-                checkpoint_name = os.path.join(
-                    os.path.dirname(__file__),
-                    f"experiments/{self.config['output_dir']}/{artifact_name}",
-                )
+                checkpoint_name = f"{self.config['output_dir']}/{artifact_name}"
+
                 self.model.save_pretrained(checkpoint_name)
                 self.config["best_model_path"] = checkpoint_name
 
