@@ -237,7 +237,7 @@ class PeftEval:
                 else:
                     result[f"{prefix}_{n}"] = m(decoded_preds, decoded_labels)
 
-            # print(decoded_preds, decoded_labels, result)
+            print(decoded_preds, decoded_labels, result)
 
             return result
 

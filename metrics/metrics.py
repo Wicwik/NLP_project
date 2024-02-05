@@ -206,6 +206,7 @@ class MultircF1(Metric):
 
     def compute(self):
         # print(self.targets)
+        # print([p["value"] for p in self.preds], [t["value"] for t in self.targets])
         return self.f1_score_with_invalid(
             [p["value"] for p in self.preds], [t["value"] for t in self.targets]
         )
