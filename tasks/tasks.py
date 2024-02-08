@@ -369,6 +369,31 @@ class MNLITXT(AbstractTask):
         return self.formater(self.name, input_texts, label_texts, add_prefix)
 
 
+class WNLI(AbstractTask):
+    name = "wnli"
+    labels_list = ["0", "1"]
+    metric = [Accuracy]
+    metric_names = ["accuracy"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation",
+        "test": "validation",
+    }
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("glue", "wnli", split=split)
+
+    def preprocessor(self, example, add_prefix=True):
+        input_texts = [
+            "sentence1:",
+            example["sentence1"],
+            "sentence2:",
+            example["sentence2"],
+        ]
+        label_texts = [str(example["label"])]
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
+
+
 class QQP(AbstractTask):
     name = "qqp"
     labels_list = ["0", "1"]
@@ -464,6 +489,35 @@ class SuperGLUECB(AbstractTask):
             "hypothesis:",
             example["hypothesis"],
         ]
+        label_texts = [str(example["label"])]
+
+        return self.formater(self.name, input_texts, label_texts, add_prefix)
+
+
+class SuperGLUECOPA(AbstractTask):
+    name = "superglue-copa"
+    labels_list = ["0", "1"]
+    split_to_data_split = {
+        "train": "train",
+        "validation": "validation",
+        "test": "validation",
+    }
+    metric = [Accuracy]
+    metric_names = ["accuracy"]
+
+    def load_dataset(self, split):
+        return datasets.load_dataset("super_glue", "copa", split=split)
+
+    def preprocessor(self, example, add_prefix=True):
+        input_texts = [
+            "premise:",
+            example["premise"],
+            "choice1:",
+            example["choice1"],
+            "choice2:",
+            example["choice2"],
+        ]
+
         label_texts = [str(example["label"])]
 
         return self.formater(self.name, input_texts, label_texts, add_prefix)
@@ -765,10 +819,12 @@ TASK_MAPPING = OrderedDict(
         ("rte", RTE),
         ("mnli", MNLI),
         ("mnli_txt", MNLITXT),
+        ("wnli", WNLI),
         ("qqp", QQP),
         ("stsb", STSB),
         ("superglue-boolq", SuperGLUEBoolQ),
         ("superglue-cb", SuperGLUECB),
+        ("superglue-copa", SuperGLUECOPA),
         ("superglue-multirc", SuperGLUEMultiRC),
         ("superglue-wic", SuperGLUEWIC),
         ("superglue-wsc.fixed", SuperGLUEWSCFixed),
