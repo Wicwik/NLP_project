@@ -81,6 +81,10 @@ class PeftTraining:
             max_target_lengths,
         )
 
+        if config["pad_to_max_length"]:
+            max_target_lengths = [config["max_target_length"]]*len(config["datasets"])
+            print(f"Padding to max_len: {max_target_lengths}")
+
         train_datasets = [
             AutoTask.get(dataset_name, config).get(
                 split="train",

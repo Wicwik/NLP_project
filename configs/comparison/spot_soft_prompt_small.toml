@@ -22,5 +22,5 @@ split_validation_test = true
 output_dir = "nlp_ss_soft_prompts"
 warmup_steps = 500
 shared_attn = false
-pad_to_max_length = false
+pad_to_max_length = true
 weight_decay = 1e-5

@@ -372,7 +372,7 @@ class MNLITXT(AbstractTask):
 class WNLI(AbstractTask):
     name = "wnli"
     labels_list = ["0", "1"]
-    metric = [Accuracy]
+    metrics = [Accuracy]
     metric_names = ["accuracy"]
     split_to_data_split = {
         "train": "train",
@@ -502,7 +502,7 @@ class SuperGLUECOPA(AbstractTask):
         "validation": "validation",
         "test": "validation",
     }
-    metric = [Accuracy]
+    metrics = [Accuracy]
     metric_names = ["accuracy"]
 
     def load_dataset(self, split):
