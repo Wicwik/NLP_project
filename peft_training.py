@@ -338,6 +338,7 @@ class PeftTraining:
                 task_type=config["task_type"],
                 num_virtual_tokens=config["num_virtual_tokens"],
                 prompt_init=config["prompt_init"],
+                prompt_init_embedding=config.get("prompt_init_embedding", None)
             )
 
             if config["peft_type"] == "attempt":

@@ -15,6 +15,10 @@ class PromptTuningConfig(PeftConfig):
             "help": "Prompt init type [random, vocab, embedding], default is RANDOM."
         },
     )
+    prompt_init_embedding: str = field(
+        default=None,
+        metadata={"help": "Embedding to init the promt with."},
+    )
     num_virtual_tokens: int = field(
         default=100, metadata={"help": "Soft prompt lenght."}
     )

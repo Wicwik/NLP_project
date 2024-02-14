@@ -8,10 +8,6 @@ from ..prompt_tuning.config import PromptTuningConfig
 
 @dataclass
 class AttemptConfig(PromptTuningConfig):
-    prompt_init_embedding: str = field(
-        default=None,
-        metadata={"help": "Embedding to init the promt with."},
-    )
     prompt_embedding_paths: List[str] = field(
         default=None,
         metadata={"help": "List of paths to source prompts, default is empty list."},
