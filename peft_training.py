@@ -82,7 +82,7 @@ class PeftTraining:
         )
 
         if config["pad_to_max_length"]:
-            max_target_lengths = [config["max_target_length"]]*len(config["datasets"])
+            max_target_lengths = [config["max_target_length"]] * len(config["datasets"])
             print(f"Padding to max_len: {max_target_lengths}")
 
         train_datasets = [
@@ -338,7 +338,7 @@ class PeftTraining:
                 task_type=config["task_type"],
                 num_virtual_tokens=config["num_virtual_tokens"],
                 prompt_init=config["prompt_init"],
-                prompt_init_embedding=config.get("prompt_init_embedding", None)
+                prompt_init_embedding=config.get("prompt_init_embedding", None),
             )
 
             if config["peft_type"] == "attempt":
