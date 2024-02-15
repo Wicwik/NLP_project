@@ -1,6 +1,8 @@
 # Comparing Soft Prompt Transfer Parameter-Efficient Fine-Tuning Methods With Limited NLP Datasets
 This repository features a replication study of the work [Attempt: Parameter-efficient multi-task tuning via attentional mixtures of soft prompts](https://aclanthology.org/2022.emnlp-main.446.pdf), published in the proceedings of the EMNLP 2022 conference. The original implentation can be found in the [author's repository](https://github.com/AkariAsai/ATTEMPT). Furthermore it also contains a series of experimets of comparing soft prompt transfer capabilities of SPoT and ATTEMPT methods on small and medium dataset sizes. 
 
+This project builds upon the [replication study of ATTEMPT method](https://wandb.ai/rbelanec/nlp_spot_medium).
+
 ### How to run
 ```
 python3 -m venv repl
